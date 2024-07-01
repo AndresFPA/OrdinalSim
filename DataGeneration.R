@@ -44,7 +44,7 @@ library(matrixcalc)
 
 
 DataGeneration <- function(model, nclus, ngroups, N_g,
-                           reg_coeff, balance, 
+                           reg_coeff, balance, c,
                            reliability = "high", NonInvSize = 0.4, # The factors below are fixed in this simulation
                            NonInvItems = 2, NonInvG = 0.5, NonInvType = "random",
                            ResRange = 0.2, randomVarX = T){
@@ -77,10 +77,10 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   }
   
   # Give names to the regression parameters (only for better understanding):
-  B1 <- numeric(ngroups)
-  B2 <- numeric(ngroups)
-  B3 <- numeric(ngroups)
-  B4 <- numeric(ngroups)
+  B1 <- numeric(nclus)
+  B2 <- numeric(nclus)
+  B3 <- numeric(nclus)
+  B4 <- numeric(nclus)
   # browser()
   # Get regression parameters for each cluster
   # Cluster 1
@@ -112,16 +112,17 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   # Generate the structural parameters
   # BETA - Regression parameters
   # beta is cluster-specific. Only nclus matrices needed
-  beta <- array(data = 0, dim = c(m, m, ngroups), dimnames = list(lat_var, lat_var))
+  beta <- array(data = 0, dim = c(m, m, nclus), dimnames = list(lat_var, lat_var))
   colnames(beta) <- rownames(beta) <- lat_var
   
   # Fill in correct regression parameters
-  for(g in 1:ngroups){
+  # Initialize
+  for(k in 1:nclus){
     # beta
-    beta[endog2, exog[1], g] <- B1[g]
-    beta[endog1, exog[1], g] <- B2[g]
-    beta[endog1, exog[2], g] <- B3[g]
-    beta[endog2, endog1, g] <- B4[g]
+    beta[endog2, exog[1], k] <- B1[k]
+    beta[endog1, exog[1], k] <- B2[k]
+    beta[endog1, exog[2], k] <- B3[k]
+    beta[endog2, endog1, k] <- B4[k]
   }
   
   # psi is group- and cluster-specific. ngroups matrices are needed.
@@ -151,13 +152,13 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
     
     # Insert the group-and-cluster-specific parts
     # For the endogenous variances, start from the total var (endog_var) and subtract the explained variance by the regression
-    psi_g[endog1, endog1, g] <- endo_var1[g] - ((B2[g]^2 * exog_var1[g]) + 
-                                                  (B3[g]^2 * exog_var2[g]) + 
-                                                  (2 * B2[g] * B3[g] * exog_cov[g])) 
+    psi_g[endog1, endog1, g] <- endo_var1[g] - ((B2[GperK[g]]^2 * exog_var1[g]) + 
+                                                  (B3[GperK[g]]^2 * exog_var2[g]) + 
+                                                  (2 * B2[GperK[g]] * B3[GperK[g]] * exog_cov[g])) # Group-specific
     
-    psi_g[endog2, endog2, g] <- endo_var2[g] - ((B1[g]^2 * exog_var1[g]) + 
-                                                  (B4[g]^2 * endo_var1[g]) + 
-                                                  (2 * B1[g] * B4[g] * ((B2[g] * exog_var1[g]) + (B3[g] * exog_cov[g])))) 
+    psi_g[endog2, endog2, g] <- endo_var2[g] - ((B1[GperK[g]]^2 * exog_var1[g]) + 
+                                                  (B4[GperK[g]]^2 * endo_var1[g]) + 
+                                                  (2 * B1[GperK[g]] * B4[GperK[g]] * ((B2[GperK[g]] * exog_var1[g]) + (B3[GperK[g]] * exog_cov[g])))) # Group-specific
   }
   
   # Create the covariance matrix of the factors (phi in the paper)
@@ -165,7 +166,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   cov_eta <- array(data = 0, dim = c(m, m, ngroups), dimnames = list(lat_var, lat_var))
 
   for(g in 1:ngroups){
-    cov_eta[, , g] <- solve(I - beta[, , g]) %*% psi_g[, , g] %*% solve(t(I - beta[, , g]))
+    cov_eta[, , g] <- solve(I - beta[, , GperK[g]]) %*% psi_g[, , g] %*% solve(t(I - beta[, , GperK[g]]))
   }
   
   # Generate the measurement model parameters
@@ -207,7 +208,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   
   # Generate sample covariance matrix (sigma) per groups
   Sigma <- array(data = 0, dim = c(p, p, ngroups))
-  
+  # browser()
   # Include non-invariance in the loadings according to NonInvG
   # Which groups are non-invariant? (random sampling)
   NonInvIdx <- sample(x = 1:ngroups, size = NonInvG*ngroups, replace = F)
@@ -223,26 +224,50 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   
   # Data Generation final
   # Set the cut-offs for the ordinal data
-  thresh1 <- c(-1.2, 0, 1.2)
-  thresh2 <- c(-1.2, 0, 1.2)
-  thresh3 <- c(-1.2, 0, 1.2)
-  thresh4 <- c(-1.2, 0, 1.2)
-  thresh5 <- c(-1.2, 0, 1.2)
-  thresh6 <- c(-1.2, 0, 1.2)
-  thresh7 <- c(-1.2, 0, 1.2)
-  thresh8 <- c(-1.2, 0, 1.2)
-  thresh9 <- c(-1.2, 0, 1.2)
-  thresh10 <- c(-1.2, 0, 1.2)
-  thresh11 <- c(-1.2, 0, 1.2)
-  thresh12 <- c(-1.2, 0, 1.2)
-  thresh13 <- c(-1.2, 0, 1.2)
-  thresh14 <- c(-1.2, 0, 1.2)
-  thresh15 <- c(-1.2, 0, 1.2)
-  thresh16 <- c(-1.2, 0, 1.2)
-  thresh17 <- c(-1.2, 0, 1.2)
-  thresh18 <- c(-1.2, 0, 1.2)
-  thresh19 <- c(-1.2, 0, 1.2)
-  thresh20 <- c(-1.2, 0, 1.2)
+  if (c == 4){
+    thresh1 <- c(-1.2, 0, 1.2)
+    thresh2 <- c(-1.2, 0, 1.2)
+    thresh3 <- c(-1.2, 0, 1.2)
+    thresh4 <- c(-1.2, 0, 1.2)
+    thresh5 <- c(-1.2, 0, 1.2)
+    thresh6 <- c(-1.2, 0, 1.2)
+    thresh7 <- c(-1.2, 0, 1.2)
+    thresh8 <- c(-1.2, 0, 1.2)
+    thresh9 <- c(-1.2, 0, 1.2)
+    thresh10 <- c(-1.2, 0, 1.2)
+    thresh11 <- c(-1.2, 0, 1.2)
+    thresh12 <- c(-1.2, 0, 1.2)
+    thresh13 <- c(-1.2, 0, 1.2)
+    thresh14 <- c(-1.2, 0, 1.2)
+    thresh15 <- c(-1.2, 0, 1.2)
+    thresh16 <- c(-1.2, 0, 1.2)
+    thresh17 <- c(-1.2, 0, 1.2)
+    thresh18 <- c(-1.2, 0, 1.2)
+    thresh19 <- c(-1.2, 0, 1.2)
+    thresh20 <- c(-1.2, 0, 1.2)
+  } else if (c == 2) {
+    thresh1 <- c(0)
+    thresh2 <- c(0)
+    thresh3 <- c(0)
+    thresh4 <- c(0)
+    thresh5 <- c(0)
+    thresh6 <- c(0)
+    thresh7 <- c(0)
+    thresh8 <- c(0)
+    thresh9 <- c(0)
+    thresh10 <- c(0)
+    thresh11 <- c(0)
+    thresh12 <- c(0)
+    thresh13 <- c(0)
+    thresh14 <- c(0)
+    thresh15 <- c(0)
+    thresh16 <- c(0)
+    thresh17 <- c(0)
+    thresh18 <- c(0)
+    thresh19 <- c(0)
+    thresh20 <- c(0)
+  }
+  
   
   # For now, mu would be 0 as we are only interested in centered variables
   SimData <- c()
@@ -283,5 +308,5 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   
   # Return data
   return(list(SimData = SimData, NonInvIdx = NonInvIdx, psi_g = psi_g,
-              OrTheta = Theta, cov_eta = cov_eta))
+              Sigma = Sigma, cov_eta = cov_eta))
 }
