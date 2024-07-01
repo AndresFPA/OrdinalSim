@@ -60,7 +60,8 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
                    max_it = 10000L, nstarts = 20L, printing = FALSE,
                    partition = "hard", NonInv = NULL, constraints = "loadings",
                    Endo2Cov = TRUE, allG = TRUE, fit = "factors", 
-                   se = "none", est_method = "local", meanstr = FALSE) {
+                   se = "none", est_method = "local", meanstr = FALSE,
+                   ordered = F) {
   
   # Add a warning in case there is a pre-defined start and the user also requires a multi-start
   if (!(is.null(userStart)) && nstarts > 1) {
@@ -85,16 +86,18 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
     meanstr <- T
   }
   
-  if(isFALSE(meanstr)){ 
-    group.idx <- match(dat[, group], g_name)
-    group.sizes <- tabulate(group.idx)
-    group.means <- rowsum.default(as.matrix(dat[, vars]),
-                                  group = group.idx, reorder = FALSE,
-                                  na.rm = FALSE
-    ) / group.sizes
-    centered[, vars] <- dat[, vars] - group.means[group.idx, , drop = FALSE]
-  } 
-  
+  # Only center if data is not categorical and the mean structure is not required
+  if(ordered == F){
+    if(isFALSE(meanstr)){ 
+      group.idx <- match(dat[, group], g_name)
+      group.sizes <- tabulate(group.idx)
+      group.means <- rowsum.default(as.matrix(dat[, vars]),
+                                    group = group.idx, reorder = FALSE,
+                                    na.rm = FALSE
+      ) / group.sizes
+      centered[, vars] <- dat[, vars] - group.means[group.idx, , drop = FALSE]
+    } 
+  }
   
   # Get sample covariance matrix per group (used later)
   S_unbiased <- lapply(X = unique(centered[, group]), FUN = function(x) {
@@ -122,7 +125,8 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
           estimator = "ML", group.equal = constraints,
           se = se, test = "none", baseline = FALSE, h1 = FALSE,
           implied = FALSE, loglik = FALSE,
-          meanstructure = FALSE, group.partial = NonInv
+          meanstructure = FALSE, group.partial = NonInv,
+          ordered = ordered
         )
       }
     }
@@ -193,13 +197,26 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
       # If the user input their own step 1 results, use it
       S1output <- s1out
     } else if (is.null(s1out)) {
-      S1output <- lavaan::cfa(
-        model = step1model, data = centered, group = group,
-        estimator = "ML", group.equal = constraints,
-        se = se, test = "none", baseline = FALSE, h1 = FALSE,
-        implied = FALSE, loglik = FALSE,
-        meanstructure = FALSE, group.partial = NonInv
-      )
+      # Check if variables are categorical/ordinal
+      if (ordered == F){
+        S1output <- lavaan::cfa(
+          model = step1model, data = centered, group = group,
+          estimator = "ML", group.equal = constraints,
+          se = se, test = "none", baseline = FALSE, h1 = FALSE,
+          implied = FALSE, loglik = FALSE,
+          meanstructure = FALSE, group.partial = NonInv
+        )
+      } else if (ordered == T){
+        S1output <- lavaan::cfa(
+          model = step1model, data = centered, group = group,
+          group.equal = constraints,
+          se = se, test = "none", baseline = FALSE, h1 = FALSE,
+          implied = FALSE, loglik = FALSE,
+          meanstructure = FALSE, group.partial = NonInv,
+          ordered = T
+        )
+      }
+      
     }
 
     # Define some important objects
@@ -221,7 +238,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
   # Biased cov matrix
   S_biased <- vector(mode = "list", length = ngroups)
   for(g in 1:ngroups){S_biased[[g]] <- S_unbiased[[g]] * (N_gs[[g]] - 1) / N_gs[[g]]}
-  
+  # browser()
   # STEP 2 (EM algorithm for model estimation) -----------------------------------------------------
   # We perform a MULTI-START procedure to avoid local maxima.
   # Initialize objects to store results per random start.

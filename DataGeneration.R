@@ -44,7 +44,7 @@ library(matrixcalc)
 
 
 DataGeneration <- function(model, nclus, ngroups, N_g,
-                           reg_coeff, balance, sd,
+                           reg_coeff, balance, 
                            reliability = "high", NonInvSize = 0.4, # The factors below are fixed in this simulation
                            NonInvItems = 2, NonInvG = 0.5, NonInvType = "random",
                            ResRange = 0.2, randomVarX = T){
@@ -84,29 +84,29 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   # browser()
   # Get regression parameters for each cluster
   # Cluster 1
-  B1 <- rnorm(n = sum(GperK == 1), mean = 0, sd = sd)
-  B2 <- rnorm(n = sum(GperK == 1), mean = reg_coeff, sd = sd)
-  B3 <- rnorm(n = sum(GperK == 1), mean = reg_coeff, sd = sd)
-  B4 <- rnorm(n = sum(GperK == 1), mean = reg_coeff, sd = sd)
+  B1[1] <- 0
+  B2[1] <- reg_coeff
+  B3[1] <- reg_coeff
+  B4[1] <- reg_coeff
   
   # Cluster 2
-  B1 <- c(B1, rnorm(n = sum(GperK == 2), mean = reg_coeff, sd = sd))
-  B2 <- c(B2, rnorm(n = sum(GperK == 2), mean = 0, sd = sd))
-  B3 <- c(B3, rnorm(n = sum(GperK == 2), mean = reg_coeff, sd = sd))
-  B4 <- c(B4, rnorm(n = sum(GperK == 2), mean = reg_coeff, sd = sd))
+  B1[2] <- reg_coeff
+  B2[2] <- 0
+  B3[2] <- reg_coeff
+  B4[2] <- reg_coeff
   
   if (nclus == 4){
     # Cluster 3
-    B1 <- c(B1, rnorm(n = sum(GperK == 3), mean = reg_coeff, sd = sd))
-    B2 <- c(B2, rnorm(n = sum(GperK == 3), mean = reg_coeff, sd = sd))
-    B3 <- c(B3, rnorm(n = sum(GperK == 3), mean = 0, sd = sd))
-    B4 <- c(B4, rnorm(n = sum(GperK == 3), mean = reg_coeff, sd = sd))
+    B1[3] <- reg_coeff
+    B2[3] <- reg_coeff
+    B3[3] <- 0
+    B4[3] <- reg_coeff
     
     # Cluster 4
-    B1 <- c(B1, rnorm(n = sum(GperK == 4), mean = reg_coeff, sd = sd))
-    B2 <- c(B2, rnorm(n = sum(GperK == 4), mean = reg_coeff, sd = sd))
-    B3 <- c(B3, rnorm(n = sum(GperK == 4), mean = reg_coeff, sd = sd))
-    B4 <- c(B4, rnorm(n = sum(GperK == 4), mean = 0, sd = sd))
+    B1[4] <- reg_coeff
+    B2[4] <- reg_coeff
+    B3[4] <- reg_coeff
+    B4[4] <- 0
   }
   
   # Generate the structural parameters
@@ -222,10 +222,57 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
 
   
   # Data Generation final
+  # Set the cut-offs for the ordinal data
+  thresh1 <- c(-1.2, 0, 1.2)
+  thresh2 <- c(-1.2, 0, 1.2)
+  thresh3 <- c(-1.2, 0, 1.2)
+  thresh4 <- c(-1.2, 0, 1.2)
+  thresh5 <- c(-1.2, 0, 1.2)
+  thresh6 <- c(-1.2, 0, 1.2)
+  thresh7 <- c(-1.2, 0, 1.2)
+  thresh8 <- c(-1.2, 0, 1.2)
+  thresh9 <- c(-1.2, 0, 1.2)
+  thresh10 <- c(-1.2, 0, 1.2)
+  thresh11 <- c(-1.2, 0, 1.2)
+  thresh12 <- c(-1.2, 0, 1.2)
+  thresh13 <- c(-1.2, 0, 1.2)
+  thresh14 <- c(-1.2, 0, 1.2)
+  thresh15 <- c(-1.2, 0, 1.2)
+  thresh16 <- c(-1.2, 0, 1.2)
+  thresh17 <- c(-1.2, 0, 1.2)
+  thresh18 <- c(-1.2, 0, 1.2)
+  thresh19 <- c(-1.2, 0, 1.2)
+  thresh20 <- c(-1.2, 0, 1.2)
+  
   # For now, mu would be 0 as we are only interested in centered variables
   SimData <- c()
   for(g in 1:ngroups){
+    # Generate the data per group
     tmp <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T)
+    
+    # Get the group-data in ordinal format following the thresholds
+    tmp[, 1] <- as.numeric(cut(tmp[, 1], breaks = c(-Inf, thresh1, Inf)))
+    tmp[, 2] <- as.numeric(cut(tmp[, 2], breaks = c(-Inf, thresh2, Inf)))
+    tmp[, 3] <- as.numeric(cut(tmp[, 3], breaks = c(-Inf, thresh3, Inf)))
+    tmp[, 4] <- as.numeric(cut(tmp[, 4], breaks = c(-Inf, thresh4, Inf)))
+    tmp[, 5] <- as.numeric(cut(tmp[, 5], breaks = c(-Inf, thresh5, Inf)))
+    tmp[, 6] <- as.numeric(cut(tmp[, 6], breaks = c(-Inf, thresh6, Inf)))
+    tmp[, 7] <- as.numeric(cut(tmp[, 7], breaks = c(-Inf, thresh7, Inf)))
+    tmp[, 8] <- as.numeric(cut(tmp[, 8], breaks = c(-Inf, thresh8, Inf)))
+    tmp[, 9] <- as.numeric(cut(tmp[, 9], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 10] <- as.numeric(cut(tmp[, 10], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 11] <- as.numeric(cut(tmp[, 11], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 12] <- as.numeric(cut(tmp[, 12], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 13] <- as.numeric(cut(tmp[, 13], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 14] <- as.numeric(cut(tmp[, 14], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 15] <- as.numeric(cut(tmp[, 15], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 16] <- as.numeric(cut(tmp[, 16], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 17] <- as.numeric(cut(tmp[, 17], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 18] <- as.numeric(cut(tmp[, 18], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 19] <- as.numeric(cut(tmp[, 19], breaks = c(-Inf, thresh9, Inf)))
+    tmp[, 20] <- as.numeric(cut(tmp[, 20], breaks = c(-Inf, thresh9, Inf)))
+    
+    # Assemble the data with all groups
     SimData <- rbind(SimData, tmp)
   }
   
