@@ -278,33 +278,49 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
       thresh19 <- c(-.5, .5)
       thresh20 <- c(.1, .4)
     } else if (c == 4){
-      thresh1 <- c(-1.2, 0, 1.2)
-      thresh2 <- c(-1.2, 0, 1.2)
-      thresh3 <- c(-1.2, 0, 1.2)
-      thresh4 <- c(-1.2, 0, 1.2)
-      thresh5 <- c(-1.2, 0, 1.2)
-      thresh6 <- c(-1.2, 0, 1.2)
-      thresh7 <- c(-1.2, 0, 1.2)
-      thresh8 <- c(-1.2, 0, 1.2)
-      thresh9 <- c(-1.2, 0, 1.2)
+      thresh1 <- c(-2, 0, 2)
+      thresh2 <- c(-1, 0, 1)
+      thresh3 <- c(-1.2, 0.2, 1.2)
+      thresh4 <- c(-2.3, -0.5, 1)
+      thresh5 <- c(-1.2, 0.5, 1.7)
+      thresh6 <- c(-1.3, 0.7, 2.3)
+      thresh7 <- c(-2.4, -0.3, 0.7)
+      thresh8 <- c(-1.2, 0.6, 1.8)
+      thresh9 <- c(-1.4, 0.7, 1.9)
       thresh10 <- c(-1.2, 0, 1.2)
-      thresh11 <- c(-1.2, 0, 1.2)
-      thresh12 <- c(-1.2, 0, 1.2)
-      thresh13 <- c(-1.2, 0, 1.2)
-      thresh14 <- c(-1.2, 0, 1.2)
-      thresh15 <- c(-1.2, 0, 1.2)
-      thresh16 <- c(-1.2, 0, 1.2)
-      thresh17 <- c(-1.2, 0, 1.2)
-      thresh18 <- c(-1.2, 0, 1.2)
-      thresh19 <- c(-1.2, 0, 1.2)
-      thresh20 <- c(-1.2, 0, 1.2)
+      thresh11 <- c(-.5, 0, .2)
+      thresh12 <- c(-.2, 0, .5)
+      thresh13 <- c(-.3, 0, 1.2)
+      thresh14 <- c(-1.2, 0, 0.3)
+      thresh15 <- c(-1.2, 0.5, 0.8)
+      thresh16 <- c(-0.2, 0.1, .9)
+      thresh17 <- c(-.9, -0.3, .6)
+      thresh18 <- c(-.2, 0.7, 1.2)
+      thresh19 <- c(-1.2, -0.7, .2)
+      thresh20 <- c(-1.5, 0.2, 1.2)
     } else if (c == 5){
-      
+      thresh1 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh2 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh3 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh4 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh5 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh6 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh7 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh8 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh9 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh10 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh11 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh12 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh13 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh14 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh15 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh16 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh17 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh18 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh19 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      thresh20 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
     }
   }
-  
-
-  
   
   # For now, mu would be 0 as we are only interested in centered variables
   SimData <- c()
@@ -313,29 +329,39 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
     tmp <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T)
     
     # Get the group-data in ordinal format following the thresholds
-    tmp[, 1] <- as.numeric(cut(tmp[, 1], breaks = c(-Inf, thresh1, Inf)))
-    tmp[, 2] <- as.numeric(cut(tmp[, 2], breaks = c(-Inf, thresh2, Inf)))
-    tmp[, 3] <- as.numeric(cut(tmp[, 3], breaks = c(-Inf, thresh3, Inf)))
-    tmp[, 4] <- as.numeric(cut(tmp[, 4], breaks = c(-Inf, thresh4, Inf)))
-    tmp[, 5] <- as.numeric(cut(tmp[, 5], breaks = c(-Inf, thresh5, Inf)))
-    tmp[, 6] <- as.numeric(cut(tmp[, 6], breaks = c(-Inf, thresh6, Inf)))
-    tmp[, 7] <- as.numeric(cut(tmp[, 7], breaks = c(-Inf, thresh7, Inf)))
-    tmp[, 8] <- as.numeric(cut(tmp[, 8], breaks = c(-Inf, thresh8, Inf)))
-    tmp[, 9] <- as.numeric(cut(tmp[, 9], breaks = c(-Inf, thresh9, Inf)))
-    tmp[, 10] <- as.numeric(cut(tmp[, 10], breaks = c(-Inf, thresh10, Inf)))
-    tmp[, 11] <- as.numeric(cut(tmp[, 11], breaks = c(-Inf, thresh11, Inf)))
-    tmp[, 12] <- as.numeric(cut(tmp[, 12], breaks = c(-Inf, thresh12, Inf)))
-    tmp[, 13] <- as.numeric(cut(tmp[, 13], breaks = c(-Inf, thresh13, Inf)))
-    tmp[, 14] <- as.numeric(cut(tmp[, 14], breaks = c(-Inf, thresh14, Inf)))
-    tmp[, 15] <- as.numeric(cut(tmp[, 15], breaks = c(-Inf, thresh15, Inf)))
-    tmp[, 16] <- as.numeric(cut(tmp[, 16], breaks = c(-Inf, thresh16, Inf)))
-    tmp[, 17] <- as.numeric(cut(tmp[, 17], breaks = c(-Inf, thresh17, Inf)))
-    tmp[, 18] <- as.numeric(cut(tmp[, 18], breaks = c(-Inf, thresh18, Inf)))
-    tmp[, 19] <- as.numeric(cut(tmp[, 19], breaks = c(-Inf, thresh19, Inf)))
-    tmp[, 20] <- as.numeric(cut(tmp[, 20], breaks = c(-Inf, thresh20, Inf)))
+    if(threshold == "equal"){
+      tmp <- apply(tmp, 2, function(x){as.numeric(cut(x, breaks = c(-Inf, thresh, Inf)))})
+        
+    } else if(threshold == "unequal"){
+      tmp[, 1] <- as.numeric(cut(tmp[, 1], breaks = c(-Inf, thresh1, Inf)))
+      tmp[, 2] <- as.numeric(cut(tmp[, 2], breaks = c(-Inf, thresh2, Inf)))
+      tmp[, 3] <- as.numeric(cut(tmp[, 3], breaks = c(-Inf, thresh3, Inf)))
+      tmp[, 4] <- as.numeric(cut(tmp[, 4], breaks = c(-Inf, thresh4, Inf)))
+      tmp[, 5] <- as.numeric(cut(tmp[, 5], breaks = c(-Inf, thresh5, Inf)))
+      tmp[, 6] <- as.numeric(cut(tmp[, 6], breaks = c(-Inf, thresh6, Inf)))
+      tmp[, 7] <- as.numeric(cut(tmp[, 7], breaks = c(-Inf, thresh7, Inf)))
+      tmp[, 8] <- as.numeric(cut(tmp[, 8], breaks = c(-Inf, thresh8, Inf)))
+      tmp[, 9] <- as.numeric(cut(tmp[, 9], breaks = c(-Inf, thresh9, Inf)))
+      tmp[, 10] <- as.numeric(cut(tmp[, 10], breaks = c(-Inf, thresh10, Inf)))
+      tmp[, 11] <- as.numeric(cut(tmp[, 11], breaks = c(-Inf, thresh11, Inf)))
+      tmp[, 12] <- as.numeric(cut(tmp[, 12], breaks = c(-Inf, thresh12, Inf)))
+      tmp[, 13] <- as.numeric(cut(tmp[, 13], breaks = c(-Inf, thresh13, Inf)))
+      tmp[, 14] <- as.numeric(cut(tmp[, 14], breaks = c(-Inf, thresh14, Inf)))
+      tmp[, 15] <- as.numeric(cut(tmp[, 15], breaks = c(-Inf, thresh15, Inf)))
+      tmp[, 16] <- as.numeric(cut(tmp[, 16], breaks = c(-Inf, thresh16, Inf)))
+      tmp[, 17] <- as.numeric(cut(tmp[, 17], breaks = c(-Inf, thresh17, Inf)))
+      tmp[, 18] <- as.numeric(cut(tmp[, 18], breaks = c(-Inf, thresh18, Inf)))
+      tmp[, 19] <- as.numeric(cut(tmp[, 19], breaks = c(-Inf, thresh19, Inf)))
+      tmp[, 20] <- as.numeric(cut(tmp[, 20], breaks = c(-Inf, thresh20, Inf)))
+    }
     
     # Assemble the data with all groups
     SimData <- rbind(SimData, tmp)
+  }
+  
+  if (threshold == "unequal"){
+    thresh <- list(thresh1, thresh2, thresh3, thresh4, thresh5, thresh6, thresh7, thresh8, thresh9, thresh10,
+                   thresh11, thresh12, thresh13, thresh14, thresh15, thresh16, thresh17, thresh18, thresh19, thresh20)
   }
   
   # Add the final labels
@@ -345,5 +371,5 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   
   # Return data
   return(list(SimData = SimData, NonInvIdx = NonInvIdx, psi_g = psi_g,
-              Sigma = Sigma, cov_eta = cov_eta))
+              Sigma = Sigma, cov_eta = cov_eta, thresh = thresh))
 }
