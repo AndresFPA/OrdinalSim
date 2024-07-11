@@ -207,6 +207,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
           meanstructure = FALSE, group.partial = NonInv
         )
       } else if (ordered == T){
+        # browser()
         S1output <- lavaan::cfa(
           model = step1model, data = centered, group = group,
           group.equal = constraints,

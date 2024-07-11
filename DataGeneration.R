@@ -133,7 +133,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   if (randomVarX == T){
     exog_var1 <- runif(n = ngroups, min = 0.75, max = 1.25)
     exog_var2 <- runif(n = ngroups, min = 0.75, max = 1.25)
-    exog_cov <- runif(n = ngroups, min = -0.30, max = 0.30)
+    exog_cov <- runif(n = ngroups, min = 0.30, max = 0.60)
     endo_var1 <- runif(n = ngroups, min = 0.75, max = 1.25) # Total endogenous variance
     endo_var2 <- runif(n = ngroups, min = 0.75, max = 1.25) # Total endogenous variance
   } else { # DEPRECATED
@@ -235,92 +235,28 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
       thresh <- c(-.8, -.25, .25, .8)
     }
   } else if(threshold == "unequal"){
+    thresh <- vector(mode = "list", length = 20)
     if (c == 2) {
-      thresh1 <- 0
-      thresh2 <- -.6
-      thresh3 <- -.84
-      thresh4 <- .22
-      thresh5 <- 1.33
-      thresh6 <- .85
-      thresh7 <- -.5
-      thresh8 <- -.32
-      thresh9 <- -1.3
-      thresh10 <- .9
-      thresh11 <- .7
-      thresh12 <- .23
-      thresh13 <- .45
-      thresh14 <- -.6
-      thresh15 <- .8
-      thresh16 <- -.8
-      thresh17 <- .12
-      thresh18 <- -1
-      thresh19 <- 1
-      thresh20 <- .4
+      for(j in 1:20){
+        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 1, replace = F))
+      }
     } else if (c == 3) {
-      thresh1 <- c(-1.2, 0)
-      thresh2 <- c(-1.2, 1.2)
-      thresh3 <- c(0, 1.2)
-      thresh4 <- c(-.4, .2)
-      thresh5 <- c(-.2, .4)
-      thresh6 <- c(-.2, .2)
-      thresh7 <- c(.4, 1.2)
-      thresh8 <- c(-.2, .5)
-      thresh9 <- c(-.8, 1.2)
-      thresh10 <- c(-1.2, 1.6)
-      thresh11 <- c(-.1, .1)
-      thresh12 <- c(-.9, .5)
-      thresh13 <- c(-.3, 0)
-      thresh14 <- c(-.65, .65)
-      thresh15 <- c(.5, 1.2)
-      thresh16 <- c(-1.2, -.2)
-      thresh17 <- c(-1.5, 0)
-      thresh18 <- c(0, 1.5)
-      thresh19 <- c(-.5, .5)
-      thresh20 <- c(.1, .4)
+      for(j in 1:20){
+        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 2, replace = F))
+      }
     } else if (c == 4){
-      thresh1 <- c(-2, 0, 2)
-      thresh2 <- c(-1, 0, 1)
-      thresh3 <- c(-1.2, 0.2, 1.2)
-      thresh4 <- c(-2.3, -0.5, 1)
-      thresh5 <- c(-1.2, 0.5, 1.7)
-      thresh6 <- c(-1.3, 0.7, 2.3)
-      thresh7 <- c(-2.4, -0.3, 0.7)
-      thresh8 <- c(-1.2, 0.6, 1.8)
-      thresh9 <- c(-1.4, 0.7, 1.9)
-      thresh10 <- c(-1.2, 0, 1.2)
-      thresh11 <- c(-.5, 0, .2)
-      thresh12 <- c(-.2, 0, .5)
-      thresh13 <- c(-.3, 0, 1.2)
-      thresh14 <- c(-1.2, 0, 0.3)
-      thresh15 <- c(-1.2, 0.5, 0.8)
-      thresh16 <- c(-0.2, 0.1, .9)
-      thresh17 <- c(-.9, -0.3, .6)
-      thresh18 <- c(-.2, 0.7, 1.2)
-      thresh19 <- c(-1.2, -0.7, .2)
-      thresh20 <- c(-1.5, 0.2, 1.2)
+      for(j in 1:20){
+        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 3, replace = F))
+      }
     } else if (c == 5){
-      thresh1 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh2 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh3 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh4 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh5 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh6 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh7 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh8 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh9 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh10 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh11 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh12 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh13 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh14 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh15 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh16 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh17 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh18 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh19 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
-      thresh20 <- sort(sample(seq(-1,1, by = .1), size = 4, replace = F))
+      for(j in 1:20){
+        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 4, replace = F))
+      }
     }
   }
+  
+  # Get non-invariant thresholds
+  NonInvIdxThresh <- sample(x = 1:ngroups, size = NonInvG*ngroups, replace = F)
   
   # For now, mu would be 0 as we are only interested in centered variables
   SimData <- c()
@@ -330,38 +266,31 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
     
     # Get the group-data in ordinal format following the thresholds
     if(threshold == "equal"){
-      tmp <- apply(tmp, 2, function(x){as.numeric(cut(x, breaks = c(-Inf, thresh, Inf)))})
-        
+      if(g %in% NonInvIdxThresh){ # If group is non-invariant change first threshold of each item
+        for(j in 1:20){
+          thresh[1] <- thresh[[j]][1] + sample(x = seq(-0.2, 0.2, by = 0.05), size = 1)
+          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
+        }
+        tmp <- apply(tmp, 2, function(x){
+          as.numeric(cut(x, breaks = c(-Inf, threshNonInv, Inf)))
+          })
+      } else {
+        tmp <- apply(tmp, 2, function(x){as.numeric(cut(x, breaks = c(-Inf, thresh, Inf)))})
+      }
     } else if(threshold == "unequal"){
-      tmp[, 1] <- as.numeric(cut(tmp[, 1], breaks = c(-Inf, thresh1, Inf)))
-      tmp[, 2] <- as.numeric(cut(tmp[, 2], breaks = c(-Inf, thresh2, Inf)))
-      tmp[, 3] <- as.numeric(cut(tmp[, 3], breaks = c(-Inf, thresh3, Inf)))
-      tmp[, 4] <- as.numeric(cut(tmp[, 4], breaks = c(-Inf, thresh4, Inf)))
-      tmp[, 5] <- as.numeric(cut(tmp[, 5], breaks = c(-Inf, thresh5, Inf)))
-      tmp[, 6] <- as.numeric(cut(tmp[, 6], breaks = c(-Inf, thresh6, Inf)))
-      tmp[, 7] <- as.numeric(cut(tmp[, 7], breaks = c(-Inf, thresh7, Inf)))
-      tmp[, 8] <- as.numeric(cut(tmp[, 8], breaks = c(-Inf, thresh8, Inf)))
-      tmp[, 9] <- as.numeric(cut(tmp[, 9], breaks = c(-Inf, thresh9, Inf)))
-      tmp[, 10] <- as.numeric(cut(tmp[, 10], breaks = c(-Inf, thresh10, Inf)))
-      tmp[, 11] <- as.numeric(cut(tmp[, 11], breaks = c(-Inf, thresh11, Inf)))
-      tmp[, 12] <- as.numeric(cut(tmp[, 12], breaks = c(-Inf, thresh12, Inf)))
-      tmp[, 13] <- as.numeric(cut(tmp[, 13], breaks = c(-Inf, thresh13, Inf)))
-      tmp[, 14] <- as.numeric(cut(tmp[, 14], breaks = c(-Inf, thresh14, Inf)))
-      tmp[, 15] <- as.numeric(cut(tmp[, 15], breaks = c(-Inf, thresh15, Inf)))
-      tmp[, 16] <- as.numeric(cut(tmp[, 16], breaks = c(-Inf, thresh16, Inf)))
-      tmp[, 17] <- as.numeric(cut(tmp[, 17], breaks = c(-Inf, thresh17, Inf)))
-      tmp[, 18] <- as.numeric(cut(tmp[, 18], breaks = c(-Inf, thresh18, Inf)))
-      tmp[, 19] <- as.numeric(cut(tmp[, 19], breaks = c(-Inf, thresh19, Inf)))
-      tmp[, 20] <- as.numeric(cut(tmp[, 20], breaks = c(-Inf, thresh20, Inf)))
+      if(g %in% NonInvIdxThresh){
+        for(j in 1:20){
+          thresh[[j]][1] <- thresh[[j]][1] + sample(x = seq(-0.2, 0.2, by = 0.05), size = 1)
+          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
+        }
+      } else {
+        for(j in 1:20){
+          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
+        }
+      }
     }
-    
     # Assemble the data with all groups
     SimData <- rbind(SimData, tmp)
-  }
-  
-  if (threshold == "unequal"){
-    thresh <- list(thresh1, thresh2, thresh3, thresh4, thresh5, thresh6, thresh7, thresh8, thresh9, thresh10,
-                   thresh11, thresh12, thresh13, thresh14, thresh15, thresh16, thresh17, thresh18, thresh19, thresh20)
   }
   
   # Add the final labels
