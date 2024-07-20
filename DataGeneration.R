@@ -267,8 +267,8 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
     # Get the group-data in ordinal format following the thresholds
     if(threshold == "equal"){
       if(g %in% NonInvIdxThresh){ # If group is non-invariant change first threshold of each item
-        for(j in 1:20){
-          thresh[1] <- thresh[[j]][1] + sample(x = seq(-0.2, 0.2, by = 0.05), size = 1)
+        for(j in c(2,7,11,16)){
+          thresh[1] <- thresh[[j]][1] + sample(x = seq(-0.1, 0.1, by = 0.05), size = 1)
           tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
         }
         tmp <- apply(tmp, 2, function(x){
@@ -279,8 +279,19 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
       }
     } else if(threshold == "unequal"){
       if(g %in% NonInvIdxThresh){
-        for(j in 1:20){
-          thresh[[j]][1] <- thresh[[j]][1] + sample(x = seq(-0.2, 0.2, by = 0.05), size = 1)
+        # for(j in c(1:20)){
+        #   thresh[[j]][1] <- thresh[[j]][1] + sample(x = seq(-0.1, 0.1, by = 0.05), size = 1)
+        #   tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
+        # }
+        
+        # First, do all items normally
+        for(j in c(1:20)[-c(2,7,11,16)]){
+          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
+        }
+
+        # Repeat it for the non-invariant items
+        for(j in c(2,7,11,16)){
+          thresh[[j]][1] <- thresh[[j]][1] + sample(x = seq(-0.1, 0.1, by = 0.05), size = 1)
           tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
         }
       } else {
@@ -299,6 +310,6 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   colnames(SimData) <- c(obs_var, "group")
   
   # Return data
-  return(list(SimData = SimData, NonInvIdx = NonInvIdx, psi_g = psi_g,
+  return(list(SimData = SimData, NonInv = list(load = NonInvIdx, thresh = NonInvIdxThresh), psi_g = psi_g,
               Sigma = Sigma, cov_eta = cov_eta, thresh = thresh))
 }
