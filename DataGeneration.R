@@ -19,6 +19,8 @@ library(matrixcalc)
 #' @param NonInvG: proportion of groups affected by the non-invariance (e.g., 0.25, 0.5).
 #' @param randomVarX: define the variance of the exogenous variable. If TRUE, then random values will be defined
 #'        for all groups. If FALSE, the variance will be 1 for all groups.
+#' @param threshold: Equal or unequal thresholds for all items.
+#' @param c: How many categories does the item have.
 #'
 #' OUTPUT
 #' @return SimData: generated data
@@ -45,9 +47,10 @@ library(matrixcalc)
 
 DataGeneration <- function(model, nclus, ngroups, N_g,
                            reg_coeff, balance, c, threshold,
-                           reliability = "high", NonInvSize = 0.4, # The factors below are fixed in this simulation
+                           reliability = "high", NonInvSize = 0.4, 
                            NonInvItems = 2, NonInvG = 0.5, NonInvType = "random",
-                           ResRange = 0.2, randomVarX = T){
+                           ResRange = 0.2, NonInvGThresh = 0.25, NonInvThreshSize,
+                           randomVarX = T){
   
   # Get number of variables
   par_table <- lavaanify(model) # Create parameter table
@@ -232,66 +235,69 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
     } else if (c == 4){
       thresh <- c(-1.2, 0, 1.2)
     } else if (c == 5){
-      thresh <- c(-.8, -.25, .25, .8)
+      thresh <- c(-1.2, -.5, .5, 1.2)
     }
   } else if(threshold == "unequal"){
     thresh <- vector(mode = "list", length = 20)
     if (c == 2) {
       for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 1, replace = F))
+        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 1, replace = F))
       }
     } else if (c == 3) {
       for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 2, replace = F))
+        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 2, replace = F))
       }
     } else if (c == 4){
       for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 3, replace = F))
+        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 3, replace = F))
       }
     } else if (c == 5){
       for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-.8,.8, by = .3), size = 4, replace = F))
+        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 4, replace = F))
       }
     }
   }
   
   # Get non-invariant thresholds
-  NonInvIdxThresh <- sample(x = 1:ngroups, size = NonInvG*ngroups, replace = F)
+  NonInvIdxThresh <- sample(x = 1:ngroups, size = NonInvGThresh*ngroups, replace = F)
   
   # For now, mu would be 0 as we are only interested in centered variables
   SimData <- c()
+  TrueThresh <- thresh
+  
   for(g in 1:ngroups){
+    # Rewrite the thresholds to ensure invariance for all groups
+    thresh <- TrueThresh
+    
     # Generate the data per group
     tmp <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T)
     
     # Get the group-data in ordinal format following the thresholds
     if(threshold == "equal"){
-      if(g %in% NonInvIdxThresh){ # If group is non-invariant change first threshold of each item
-        for(j in c(2,7,11,16)){
-          thresh[1] <- thresh[[j]][1] + sample(x = seq(-0.1, 0.1, by = 0.05), size = 1)
-          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
+      if(g %in% NonInvIdxThresh){ # If group is non-invariant change middle threshold of each item
+        for(j in c(1:20)[-c(2,7,11,16)]){
+          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh, Inf)))
         }
-        tmp <- apply(tmp, 2, function(x){
-          as.numeric(cut(x, breaks = c(-Inf, threshNonInv, Inf)))
-          })
+        
+        for(j in c(1:20)[c(2,7,11,16)]){
+          thresh <- TrueThresh
+          thresh[(c/1.5)] <- thresh[(c/1.5)] + sample(x = seq(-NonInvThreshSize, NonInvThreshSize, by = 0.05), size = 1)
+          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh, Inf)))
+        }
       } else {
         tmp <- apply(tmp, 2, function(x){as.numeric(cut(x, breaks = c(-Inf, thresh, Inf)))})
       }
     } else if(threshold == "unequal"){
       if(g %in% NonInvIdxThresh){
-        # for(j in c(1:20)){
-        #   thresh[[j]][1] <- thresh[[j]][1] + sample(x = seq(-0.1, 0.1, by = 0.05), size = 1)
-        #   tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
-        # }
-        
-        # First, do all items normally
+        # First, do all invariant items normally
         for(j in c(1:20)[-c(2,7,11,16)]){
           tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
         }
 
         # Repeat it for the non-invariant items
         for(j in c(2,7,11,16)){
-          thresh[[j]][1] <- thresh[[j]][1] + sample(x = seq(-0.1, 0.1, by = 0.05), size = 1)
+          thresh <- TrueThresh
+          thresh[[j]][(c/1.5)] <- thresh[[j]][(c/1.5)] + sample(x = seq(-NonInvThreshSize, NonInvThreshSize, by = 0.05), size = 1)
           tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
         }
       } else {
