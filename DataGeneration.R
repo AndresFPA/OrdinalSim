@@ -238,24 +238,43 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
       thresh <- c(-1.2, -.5, .5, 1.2)
     }
   } else if(threshold == "unequal"){
-    thresh <- vector(mode = "list", length = 20)
-    if (c == 2) {
-      for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 1, replace = F))
-      }
-    } else if (c == 3) {
-      for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 2, replace = F))
-      }
-    } else if (c == 4){
-      for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 3, replace = F))
-      }
-    } else if (c == 5){
-      for(j in 1:20){
-        thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 4, replace = F))
-      }
-    }
+    # thresh <- vector(mode = "list", length = 20)
+    # if (c == 2) {
+    #   for(j in 1:20){
+    #     thresh[[j]] <- quantile(x, probs = c(0.5))
+    #   }
+    # } else if (c == 3) {
+    #   for(j in 1:20){
+    #     thresh[[j]] <- quantile(x, probs = c(0.33, 0.66))
+    #   }
+    # } else if (c == 4){
+    #   for(j in 1:20){
+    #     thresh[[j]] <- quantile(x, probs = c(0.25, 0.50, 0.75))
+    #   }
+    # } else if (c == 5){
+    #   for(j in 1:20){
+    #     thresh[[j]] <- quantile(x, probs = c(0.2, 0.4, 0.6, 0.8))
+    #   }
+    # }
+    
+    
+    # if (c == 2) {
+    #   for(j in 1:20){
+    #     thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 1, replace = F))
+    #   }
+    # } else if (c == 3) {
+    #   for(j in 1:20){
+    #     thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 2, replace = F))
+    #   }
+    # } else if (c == 4){
+    #   for(j in 1:20){
+    #     thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 3, replace = F))
+    #   }
+    # } else if (c == 5){
+    #   for(j in 1:20){
+    #     thresh[[j]] <- sort(sample(seq(-1.6,1.6, by = .4), size = 4, replace = F))
+    #   }
+    # }
   }
   
   # Get non-invariant thresholds
@@ -263,11 +282,11 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   
   # For now, mu would be 0 as we are only interested in centered variables
   SimData <- c()
-  TrueThresh <- thresh
+  # TrueThresh <- thresh
   
   for(g in 1:ngroups){
     # Rewrite the thresholds to ensure invariance for all groups
-    thresh <- TrueThresh
+    # thresh <- TrueThresh
     
     # Generate the data per group
     tmp <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T)
@@ -288,17 +307,40 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
         tmp <- apply(tmp, 2, function(x){as.numeric(cut(x, breaks = c(-Inf, thresh, Inf)))})
       }
     } else if(threshold == "unequal"){
+      # browser()
+      if(g == 1){
+        # Define thresholds
+        thresh <- vector(mode = "list", length = 20)
+        if (c == 2) {
+          for(j in 1:20){
+            thresh[[j]] <- quantile(tmp[, j], probs = c(0.5))
+          }
+        } else if (c == 3) {
+          for(j in 1:20){
+            thresh[[j]] <- quantile(tmp[, j], probs = c(0.33, 0.66))
+          }
+        } else if (c == 4){
+          for(j in 1:20){
+            thresh[[j]] <- quantile(tmp[, j], probs = c(0.25, 0.50, 0.75))
+          }
+        } else if (c == 5){
+          for(j in 1:20){
+            thresh[[j]] <- quantile(tmp[, j], probs = c(0.2, 0.4, 0.6, 0.8))
+          }
+        }
+      }
+      
       if(g %in% NonInvIdxThresh){
         # First, do all invariant items normally
         for(j in c(1:20)[-c(2,7,11,16)]){
           tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
         }
-
+        
         # Repeat it for the non-invariant items
         for(j in c(2,7,11,16)){
-          thresh <- TrueThresh
-          thresh[[j]][(c/1.5)] <- thresh[[j]][(c/1.5)] + sample(x = seq(-NonInvThreshSize, NonInvThreshSize, by = 0.05), size = 1)
-          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf)))
+          NonInvthresh <- thresh
+          NonInvthresh[[j]][(c/1.5)] <- NonInvthresh[[j]][(c/1.5)] + sample(x = seq(-NonInvThreshSize, NonInvThreshSize, by = 0.05), size = 1)
+          tmp[, j] <- as.numeric(cut(tmp[, j], breaks = c(-Inf, NonInvthresh[[j]], Inf)))
         }
       } else {
         for(j in 1:20){

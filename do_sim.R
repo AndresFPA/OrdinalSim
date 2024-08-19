@@ -178,7 +178,7 @@ do_sim <- function(Design, RowDesign, K){
 
 # Set working directory for the results
 # Post-IMPS
-setwd("D:/Andres/Functions")
+setwd("D:/Andres/Results")
 
 # Create final results matrix 
 # Everything is multiplied by 2 because we run the model twice (including and not including Non-Inv)
