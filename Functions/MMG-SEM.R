@@ -61,7 +61,8 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
                    partition = "hard", NonInv = NULL, constraints = "loadings",
                    Endo2Cov = TRUE, allG = TRUE, fit = "factors", 
                    se = "none", est_method = "local", meanstr = FALSE,
-                   ordered = F) {
+                   ordered = F, std.lv = F, 
+                   simple.step1model, end.ltv.fixed = F) {
   
   # Add a warning in case there is a pre-defined start and the user also requires a multi-start
   if (!(is.null(userStart)) && nstarts > 1) {
@@ -69,6 +70,10 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
     nstarts <- 1
   }
 
+  if(ordered == T){
+    ordered.step1model <- step1model
+    step1model         <- simple.step1model
+  }
   
   # Get several values relevant for future steps
   g_name  <- as.character(unique(dat[, group]))
@@ -126,7 +131,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
           se = se, test = "none", baseline = FALSE, h1 = FALSE,
           implied = FALSE, loglik = FALSE,
           meanstructure = FALSE, group.partial = NonInv,
-          ordered = ordered
+          ordered = ordered, std.lv = std.lv
         )
       }
     }
@@ -204,12 +209,12 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
           estimator = "ML", group.equal = constraints,
           se = se, test = "none", baseline = FALSE, h1 = FALSE,
           implied = FALSE, loglik = FALSE,
-          meanstructure = FALSE, group.partial = NonInv
+          meanstructure = FALSE, group.partial = NonInv, std.lv = std.lv
         )
       } else if (ordered == T){
         # browser()
         S1output <- lavaan::cfa(
-          model = step1model, data = centered, group = group,
+          model = ordered.step1model, data = centered, group = group,
           group.equal = constraints,
           se = se, test = "none", baseline = FALSE, h1 = FALSE,
           implied = FALSE, loglik = FALSE,
@@ -396,6 +401,8 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
   })
 
   # Multi-start
+  psis_nstarts <- vector(mode = "list", length = nstarts) # EXPERIMENT
+  
   for (s in 1:nstarts) {
     if (printing == T) {
       print(paste("Start", s, "-----------------"))
@@ -432,7 +439,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
     prev_LL <- 0 # previous loglikelihood initialization
     diff_LL <- 1 # Set a diff of 1 just to start the while loop
     log_test <- T # TEMPORARY - To check if there is decreasing loglikelihood
-
+    
     # Run full-convergence multi-start
     while (diff_LL > 1e-6 & i < max_it & isTRUE(log_test)) {
       i <- i + 1
@@ -661,6 +668,12 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
             psi[endog2, endog2][row(psi[endog2, endog2]) != col(psi[endog2, endog2])] <- 0
           }
 
+          ###### EXPERIMENT ######
+          # If ordered = T force the variance of the factors to be 1 (to follow the scaling from step 1)
+          if (end.ltv.fixed == T){
+            diag(psi) <- 1
+          }
+          
           # Store for future check
           psi_gks[[g, k]] <- psi
 
@@ -729,7 +742,8 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
         print(LL)
       }
     }
-
+    
+    psis_nstarts[[s]] <- psi_gks
     results_nstarts[[s]] <- s2out
     z_gks_nstarts[[s]] <- z_gks
     loglik_nstarts[s] <- LL
@@ -792,39 +806,41 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
     }) # Does not work with only one cluster
   }
 
+  psi_gks <- psis_nstarts[[best_idx]]
+  
   # Get the group- and cluster-specific psi_gks matrices
-  psi_gks <- matrix(data = list(NA), nrow = ngroups, ncol = nclus)
-
-  for (k in 1:nclus) {
-    ifelse(test = (nclus == 1), yes = (psi_k <- psi_ks), no = (psi_k <- psi_ks[[k]]))
-    ifelse(test = (nclus == 1), yes = (beta <- beta_ks), no = (beta <- beta_ks[[k]]))
-    for (g in 1:ngroups) {
-      psi_gks[[g, k]] <- psi_k
-      psi_gks[[g, k]][exog, exog] <- cov_eta[[g]][exog, exog]
-
-      # If the user required group-specific endogenous covariances (allG = T), do:
-      if (allG == T) {
-        # Take into account the effect of the cluster-specific regressions
-        # cov_eta[[g]] = solve(I - beta) %*% psi %*% t(solve(I - beta))
-        # If we solve for psi, then:
-        g_endog1_cov <- ((I - beta) %*% cov_eta[[g]] %*% t((I - beta)))[endog1, endog1] # Extract group-specific endog cov
-        if (length(endog1) > 1) {
-          g_endog1_cov[row(g_endog1_cov) != col(g_endog1_cov)] <- 0
-        }
-        # browser()
-        psi_gks[[g, k]][endog1, endog1] <- g_endog1_cov
-
-        g_endog2_cov <- ((I - beta) %*% cov_eta[[g]] %*% t((I - beta)))[endog2, endog2] # Extract group-specific endog cov
-        psi_gks[[g, k]][endog2, endog2] <- g_endog2_cov
-      }
-
-      # If required by the user, endog2 covariances are set to 0
-      if (isFALSE(Endo2Cov)) {
-        offdiag <- row(psi_gks[[g, k]][endog2, endog2]) != col(psi_gks[[g, k]][endog2, endog2])
-        psi_gks[[g, k]][endog2, endog2][offdiag] <- 0
-      }
-    } # groups
-  } # cluster
+  # psi_gks <- matrix(data = list(NA), nrow = ngroups, ncol = nclus)
+  # 
+  # for (k in 1:nclus) {
+  #   ifelse(test = (nclus == 1), yes = (psi_k <- psi_ks), no = (psi_k <- psi_ks[[k]]))
+  #   ifelse(test = (nclus == 1), yes = (beta <- beta_ks), no = (beta <- beta_ks[[k]]))
+  #   for (g in 1:ngroups) {
+  #     psi_gks[[g, k]] <- psi_k
+  #     psi_gks[[g, k]][exog, exog] <- cov_eta[[g]][exog, exog]
+  # 
+  #     # If the user required group-specific endogenous covariances (allG = T), do:
+  #     if (allG == T) {
+  #       # Take into account the effect of the cluster-specific regressions
+  #       # cov_eta[[g]] = solve(I - beta) %*% psi %*% t(solve(I - beta))
+  #       # If we solve for psi, then:
+  #       g_endog1_cov <- ((I - beta) %*% cov_eta[[g]] %*% t((I - beta)))[endog1, endog1] # Extract group-specific endog cov
+  #       if (length(endog1) > 1) {
+  #         g_endog1_cov[row(g_endog1_cov) != col(g_endog1_cov)] <- 0
+  #       }
+  #       # browser()
+  #       psi_gks[[g, k]][endog1, endog1] <- g_endog1_cov
+  # 
+  #       g_endog2_cov <- ((I - beta) %*% cov_eta[[g]] %*% t((I - beta)))[endog2, endog2] # Extract group-specific endog cov
+  #       psi_gks[[g, k]][endog2, endog2] <- g_endog2_cov
+  #     }
+  # 
+  #     # If required by the user, endog2 covariances are set to 0
+  #     if (isFALSE(Endo2Cov)) {
+  #       offdiag <- row(psi_gks[[g, k]][endog2, endog2]) != col(psi_gks[[g, k]][endog2, endog2])
+  #       psi_gks[[g, k]][endog2, endog2][offdiag] <- 0
+  #     }
+  #   } # groups
+  # } # cluster
 
   ############################
   ##### GLOBAL ESTIMATION ####
