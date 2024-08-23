@@ -330,6 +330,26 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
         }
       }
       
+      # # Define thresholds
+      # thresh <- vector(mode = "list", length = 20)
+      # if (c == 2) {
+      #   for(j in 1:20){
+      #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.5))
+      #   }
+      # } else if (c == 3) {
+      #   for(j in 1:20){
+      #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.33, 0.66))
+      #   }
+      # } else if (c == 4){
+      #   for(j in 1:20){
+      #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.25, 0.50, 0.75))
+      #   }
+      # } else if (c == 5){
+      #   for(j in 1:20){
+      #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.2, 0.4, 0.6, 0.8))
+      #   }
+      # }
+      
       if(g %in% NonInvIdxThresh){
         # First, do all invariant items normally
         for(j in c(1:20)[-c(2,7,11,16)]){
@@ -348,6 +368,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
         }
       }
     }
+    # browser()
     # Assemble the data with all groups
     SimData <- rbind(SimData, tmp)
   }

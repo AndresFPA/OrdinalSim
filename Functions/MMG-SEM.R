@@ -62,7 +62,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
                    Endo2Cov = TRUE, allG = TRUE, fit = "factors", 
                    se = "none", est_method = "local", meanstr = FALSE,
                    ordered = F, std.lv = F, 
-                   simple.step1model, end.ltv.fixed = F) {
+                   simple.step1model, end.ltv.fixed = F, rescaling = F) {
   
   # Add a warning in case there is a pre-defined start and the user also requires a multi-start
   if (!(is.null(userStart)) && nstarts > 1) {
@@ -244,7 +244,20 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
   # Biased cov matrix
   S_biased <- vector(mode = "list", length = ngroups)
   for(g in 1:ngroups){S_biased[[g]] <- S_unbiased[[g]] * (N_gs[[g]] - 1) / N_gs[[g]]}
-  # browser()
+  
+  # Rescale covariance matrices when ordinal
+  if (rescaling == T){
+    # browser()
+    for (g in 1:ngroups) {
+      # Extract the first loading of each item (the one that would be 1 if unstandardized)
+      loadings <- apply(lambda_gs[[g]], 2, function(x) {x[which(x != 0)]})[1, ]
+      # Multiply standardized variances with squared corresponding loading
+      sds <- sqrt(diag(cov_eta[[g]]) * loadings^2)
+      # Use lavaan's cor2cov to go back the covariances
+      cov_eta[[g]] <- lavaan::cor2cov(R = cov_eta[[g]], sds = sds)
+    }
+  }
+  
   # STEP 2 (EM algorithm for model estimation) -----------------------------------------------------
   # We perform a MULTI-START procedure to avoid local maxima.
   # Initialize objects to store results per random start.
