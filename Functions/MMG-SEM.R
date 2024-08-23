@@ -253,6 +253,8 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
       loadings <- apply(lambda_gs[[g]], 2, function(x) {x[which(x != 0)]})[1, ]
       # Multiply standardized variances with squared corresponding loading
       sds <- sqrt(diag(cov_eta[[g]]) * loadings^2)
+      # Re-scale everything to correlations first (depending on the constraints, only the first group may have a correlation in cov_eta)
+      cov_eta[[g]] <- stats::cov2cor(cov_eta[[g]])
       # Use lavaan's cor2cov to go back the covariances
       cov_eta[[g]] <- lavaan::cor2cov(R = cov_eta[[g]], sds = sds)
     }
