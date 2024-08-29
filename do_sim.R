@@ -14,14 +14,17 @@ source("evaluation.R")
 
 # Simulation Design
 # Which factors are going to be tested? For now:
-nclus   <- c(2, 4)                 # Number of clusters
-ngroups <- c(24)                   # Number of groups
-coeff   <- c(0.3, 0.4)             # Initial regression parameters
-N_g     <- c(100, 200)             # Sample size per groups
-balance <- c("bal", "unb")         # Cluster size
-NonInvThreshSize <- c(0, 0.1)      # Threshold non-invariance size
-c <- c(2, 3, 4, 5)                 # Number of categories
-threshold <- c("equal", "unequal") # Equality of thresholds across items
+nclus            <- c(2, 4)                 # Number of clusters
+ngroups          <- c(24)                   # Number of groups
+coeff            <- c(0.3, 0.4)             # Initial regression parameters
+N_g              <- c(100, 200)             # Sample size per groups
+balance          <- c("bal", "unb")         # Cluster size
+NonInvThreshSize <- c(0, 0.1)               # Threshold non-invariance size
+c                <- c(2, 3, 4, 5)           # Number of categories
+
+# What about the distribution of the categories?
+
+#threshold <- c("equal", "unequal") # Equality of thresholds across items
 
 # reliability <- c("low")
 # NonInvSize <- c(0.6)

@@ -62,17 +62,12 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
                    Endo2Cov = TRUE, allG = TRUE, fit = "factors", 
                    se = "none", est_method = "local", meanstr = FALSE,
                    ordered = F, std.lv = F, 
-                   simple.step1model, end.ltv.fixed = F, rescaling = F) {
+                   end.ltv.fixed = F, rescaling = F) {
   
   # Add a warning in case there is a pre-defined start and the user also requires a multi-start
   if (!(is.null(userStart)) && nstarts > 1) {
     warning("If a start is defined by the user, no multi-start is performed. The results correspond to the one start used an input")
     nstarts <- 1
-  }
-
-  if(ordered == T){
-    ordered.step1model <- step1model
-    step1model         <- simple.step1model
   }
   
   # Get several values relevant for future steps
@@ -81,6 +76,35 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
   lat_var <- lavaan::lavNames(lavaanify(step1model, auto = TRUE), "lv")
   n_var   <- length(vars)
 
+  # Add an error in case of incompatibility in the arguments regarding the scale of the latent variables
+  if(end.ltv.fixed == T & rescaling == T){
+    stop("end.ltv.fixed = T and rescaling = T arguments set the factor variances to different scales. Please choose one scaling method.")
+  }
+  
+  # Change the syntax of the model in step 1 if the data is ordered
+  if(ordered == T){
+    step1model <- semTools::measEq.syntax(configural.model = step1model,
+                                          dat              = dat,
+                                          parameterization = "delta",
+                                          ordered          = T,
+                                          ID.fac           = "std.lv",
+                                          ID.cat           = "Wu",
+                                          group            = group,
+                                          group.equal      = constraints,
+                                          group.partial    = NonInv) 
+    
+    # When ordered = T, by default, measEq.syntax standardizes the lv following Wu&Estabrook(2016).
+    # MMG-SEM does not work with standardized lv by default. Thus, a rescaling is needed
+    rescaling <- T # Set to TRUE, it will come later in the code
+    
+    # It is possible to work with standardized lv by setting end.ltv.fixed = T. This means that rescaling must be set to F
+    if (end.ltv.fixed == T){
+      rescaling <- F
+    }
+  }
+  
+  
+  
   # # Center the data per group (so that the mean for all variables in each group is 0)
   centered <- dat
   
@@ -203,24 +227,13 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
       S1output <- s1out
     } else if (is.null(s1out)) {
       # Check if variables are categorical/ordinal
-      if (ordered == F){
-        S1output <- lavaan::cfa(
-          model = step1model, data = centered, group = group,
-          estimator = "ML", group.equal = constraints,
-          se = se, test = "none", baseline = FALSE, h1 = FALSE,
-          implied = FALSE, loglik = FALSE,
-          meanstructure = FALSE, group.partial = NonInv, std.lv = std.lv
-        )
-      } else if (ordered == T){
-        # browser()
-        S1output <- lavaan::cfa(
-          model = ordered.step1model, data = centered, group = group,
-          group.equal = constraints,
-          se = se, test = "none", baseline = FALSE, h1 = FALSE,
-          implied = FALSE, loglik = FALSE,
-          meanstructure = FALSE, group.partial = NonInv,
-          ordered = T
-        )
+      S1output <- lavaan::cfa(
+        model = step1model, data = centered, group = group,
+        estimator = "ML", group.equal = constraints,
+        se = se, test = "none", baseline = FALSE, h1 = FALSE,
+        implied = FALSE, loglik = FALSE,
+        meanstructure = FALSE, group.partial = NonInv, std.lv = std.lv
+      )
       }
       
     }
