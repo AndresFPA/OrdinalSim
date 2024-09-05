@@ -63,7 +63,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
                    se = "none", est_method = "local", meanstr = FALSE,
                    ordered = F, std.lv = F, 
                    end.ltv.fixed = F, rescaling = F) {
-  
+  # browser()
   # Add a warning in case there is a pre-defined start and the user also requires a multi-start
   if (!(is.null(userStart)) && nstarts > 1) {
     warning("If a start is defined by the user, no multi-start is performed. The results correspond to the one start used an input")
@@ -83,15 +83,21 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
   
   # Change the syntax of the model in step 1 if the data is ordered
   if(ordered == T){
-    step1model <- semTools::measEq.syntax(configural.model = step1model,
+    # Save original syntax for later code
+    s1ori <- step1model
+    
+    # Get new syntax
+    step1model <- as.character(
+                  semTools::measEq.syntax(configural.model = step1model,
                                           dat              = dat,
                                           parameterization = "delta",
-                                          ordered          = T,
+                                          ordered          = vars,
                                           ID.fac           = "std.lv",
                                           ID.cat           = "Wu",
                                           group            = group,
                                           group.equal      = constraints,
-                                          group.partial    = NonInv) 
+                                          group.partial    = NonInv)
+                  )
     
     # When ordered = T, by default, measEq.syntax standardizes the lv following Wu&Estabrook(2016).
     # MMG-SEM does not work with standardized lv by default. Thus, a rescaling is needed
@@ -102,8 +108,6 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
       rescaling <- F
     }
   }
-  
-  
   
   # # Center the data per group (so that the mean for all variables in each group is 0)
   centered <- dat
@@ -229,15 +233,13 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
       # Check if variables are categorical/ordinal
       S1output <- lavaan::cfa(
         model = step1model, data = centered, group = group,
-        estimator = "ML", group.equal = constraints,
         se = se, test = "none", baseline = FALSE, h1 = FALSE,
-        implied = FALSE, loglik = FALSE,
-        meanstructure = FALSE, group.partial = NonInv, std.lv = std.lv
+        implied = FALSE, loglik = FALSE, ordered = ordered,
+        meanstructure = FALSE, group.equal = constraints,
+        group.partial = NonInv, std.lv = std.lv
       )
-      }
-      
     }
-
+      
     # Define some important objects
     # How many groups?
     ngroups <- lavaan::lavInspect(S1output, "ngroups")
@@ -250,8 +252,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
     cov_eta   <- lapply(EST, "[[", "psi") # cov_eta name refers to Variance of eta (eta being the latent variables)
   }
 
-  # Which are our latent variables?
-  lat_var <- lavaan::lavNames(lavaan::lavaanify(step1model, auto = TRUE), "lv")
+  # How many group-cluster combinations?
   gro_clu <- ngroups * nclus
   
   # Biased cov matrix
@@ -297,6 +298,7 @@ MMGSEM <- function(dat, step1model = NULL, step2model = NULL,
   }
 
   # Re-order for measurement model matrices (observed variables must be in the same order as the factors)
+  if(ordered == T){step1model <- s1ori} # Recover original syntax for correct reordering of the 
   reorder_obs <- function(x, matrix) {
     # Re-write model
     # Split into lines

@@ -15,23 +15,13 @@ source("evaluation.R")
 # Simulation Design
 # Which factors are going to be tested? For now:
 nclus            <- c(2, 4)                 # Number of clusters
-ngroups          <- c(24)                   # Number of groups
-coeff            <- c(0.3, 0.4)             # Initial regression parameters
-N_g              <- c(100, 200)             # Sample size per groups
+ngroups          <- c(24, 48)               # Number of groups
+coeff            <- c(0.2, 0.3, 0.4)        # Initial regression parameters
+N_g              <- c(50, 100, 200)         # Sample size per groups
 balance          <- c("bal", "unb")         # Cluster size
-NonInvThreshSize <- c(0, 0.1)               # Threshold non-invariance size
-c                <- c(2, 3, 4, 5)           # Number of categories
-
-# What about the distribution of the categories?
-
-#threshold <- c("equal", "unequal") # Equality of thresholds across items
-
-# reliability <- c("low")
-# NonInvSize <- c(0.6)
-# ResRange <- 0.2
-# NonInvItems <- 2
-# NonInvG <- c(0.50)
-# NonInvType <- c("fixed")
+NonInvThreshSize <- c(0, 0.2, 0.4)          # Threshold non-invariance size
+NonInvLoadSize   <- c(0.2, 0.6)             # Loading non-invariance size
+c                <- c(2, 4, 5)              # Number of categories
 
 model <- '
     # factor loadings
@@ -59,13 +49,11 @@ S2 <- '
 '
 
 # Get design matrix
-design <- expand.grid(nclus, ngroups, coeff, N_g, balance, NonInvThreshSize, c, threshold, model) # , reliability, NonInvSize, ResRange,
-                      # NonInvItems, NonInvG, NonInvType)
-colnames(design) <- c("nclus", "ngroups", "coeff", "N_g", "balance", "NonInvThreshSize", "c", "threshold", "model")
-                      # "reliability", "NonInvSize", "ResRange", "NonInvItems", "NonInvG", "NonInvType")
+design <- expand.grid(nclus, ngroups, coeff, N_g, balance, NonInvThreshSize, c, NonInvLoadSize, model) 
+colnames(design) <- c("nclus", "ngroups", "coeff", "N_g", "balance", "NonInvThreshSize", "c", "NonInvLoadSize", "model")
 
 rownames(design) <- NULL
-rm(balance, coeff, N_g, nclus, ngroups, c, threshold, NonInvThreshSize) #, NonInvG, NonInvItems, NonInvSize, reliability, ResRange)
+rm(balance, coeff, N_g, nclus, ngroups, c, NonInvLoadSize, NonInvThreshSize) 
 
 # Functions for the simulation
 # First, to avoid stopping due to errors, create a function with data generation and MMGSEM
@@ -85,18 +73,34 @@ genDat_analysis <- function(seed, Design, RowDesign, k, NonInv){
                               N_g              = Design[RowDesign, "N_g"], 
                               balance          = Design[RowDesign, "balance"], 
                               NonInvThreshSize = Design[RowDesign, "NonInvThreshSize"],
-                              c                = Design[RowDesign, "c"],
-                              threshold        = Design[RowDesign, "threshold"])
+                              NonInvSize       = Design[RowDesign, "NonInvLoadSize"],
+                              c                = Design[RowDesign, "c"])
 
+    # Get the non-invariant threshold parameters for the syntax
+    fake_cfa <- cfa(S1, ordered = T, do.fit = F, data = SimData$SimData)
+    PRT <- partable(fake_cfa)
+    PRT$full <- paste0(PRT$lhs, PRT$op, PRT$rhs)
+    NoninvThresh <- PRT$full[which(PRT$op == "|" & PRT$lhs %in% c("x2", "x3",
+                                                                  "m2", "m3",
+                                                                  "y2", "y3",
+                                                                  "z2", "z3"))]
+    
+    # Define non-invariances
+    NonInv <- c("F1 =~ x2", "F1 =~ x3",
+                "F2 =~ z2", "F2 =~ z3",
+                "F3 =~ m2", "F3 =~ m3",
+                "F4 =~ y2", "F4 =~ y3",
+                NoninvThresh)
+    
     fit.con <- MMGSEM(dat = SimData$SimData, step1model = S1, step2model = S2, group = "group", 
                       nclus = Design[RowDesign, "nclus"], seed = seed,
                       nstarts = 20, allG = T, est_method = "local", ordered = F, 
-                      NonInv = NonInv, constraints = c("loadings", "thresholds"))
+                      NonInv = NonInv, constraints = c("loadings"))
     
     fit.cat <- MMGSEM(dat = SimData$SimData, step1model = S1, step2model = S2, group = "group", 
                       nclus = Design[RowDesign, "nclus"], seed = seed,
                       nstarts = 20, allG = T, est_method = "local", ordered = T, 
-                      NonInv = NonInv, constraints = c("loadings"))#, "thresholds"))
+                      NonInv = NonInv, constraints = c("loadings", "thresholds"))
     
     results <- list(fit.con = fit.con, fit.cat = fit.cat)
     
@@ -112,20 +116,13 @@ do_sim <- function(Design, RowDesign, K){
   # Create the original clustering matrix for comparison below
   original <- create_original(balance = Design[RowDesign, "balance"], 
                               ngroups = Design[RowDesign, "ngroups"], 
-                              nclus = Design[RowDesign, "nclus"])
+                              nclus   = Design[RowDesign, "nclus"])
   
   # Create matrix to store results
   # 10 columns for: ARI and RMSEA * 2 (continuous and ordinal) 
   ResultsRow <- matrix(data = NA, nrow = (K), ncol = 16)
   colnames(ResultsRow) <- c("ARI.con", "CC.con", "RMSE_B1.con", "RMSE_B2.con", "RMSE_B3.con", "RMSE_B4.con", "exo_mean.con", "cov_mean.con", 
                             "ARI.cat", "CC.cat", "RMSE_B1.cat", "RMSE_B2.cat", "RMSE_B3.cat", "RMSE_B4.cat", "exo_mean.cat", "cov_mean.cat")
-  
-  # Define non-invariances
-  NonInv <- c("F1 =~ x2", "F1 =~ x3",
-              "F2 =~ z2", "F2 =~ z3",
-              "F3 =~ m2", "F3 =~ m3",
-              "F4 =~ y2", "F4 =~ y3",
-              "x2|t2", "z2|t2", "m2|t2", "y2|t2")
   
   for(k in 1:K){
     print(paste("Replication", k, "out of", K))
@@ -134,7 +131,7 @@ do_sim <- function(Design, RowDesign, K){
     attempts <- 10
     for(j in 1:attempts){
       # Seed will change if there is an error
-      ctimes <- system.time(results <- genDat_analysis(seed = (RowDesign * k * j), Design = Design, RowDesign = RowDesign, k = k, NonInv = NonInv))
+      ctimes <- system.time(results <- genDat_analysis(seed = (RowDesign * k * j), Design = Design, RowDesign = RowDesign, k = k))
       if(!is.null(results)){
         # If there was no error, break the loop and continue
         break
@@ -185,13 +182,13 @@ setwd("D:/Andres/Results")
 
 # Create final results matrix 
 # Everything is multiplied by 2 because we run the model twice (including and not including Non-Inv)
-K <- 5 # Number of replications per condition
+K <- 1 # Number of replications per condition
 
 Results_final <- as.data.frame(matrix(data = NA, nrow = nrow(design)*K, ncol = 16))
 Results_final$Replication <- rep(x = 1:K, times = nrow(design))
 Results_final$Condition <- rep(x = 1:nrow(design), each = K)
 
-system.time(for(i in 1:30){
+system.time(for(i in 1:1){
   cat("\n", "Condition", i, "out of", nrow(design), "\n")
   Results <- do_sim(Design = design, RowDesign = i, K = K)
   Results_final[(K*(i-1)+1):(i*K), 1:16] <- Results
