@@ -229,87 +229,115 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   # Get non-invariant thresholds
   NonInvIdxThresh <- sample(x = 1:ngroups, size = NonInvGThresh*ngroups, replace = F)
   
+  # Create object to save non-inv thresh
+  NonInvthreshList <- vector(mode = "list", length = length(NonInvIdxThresh)) 
+  g_counter <- 0
+  
   # For now, mu would be 0 as we are only interested in centered variables
-  SimData <- c()
+  SimData_ord <- c()
+  SimData_con <- c()
   
   for(g in 1:ngroups){
     # Generate the data per group
-    tmp <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T)
+    tmp_con <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T) # Save continuous data, just in case
+    tmp_ord <- scale(tmp_con) # For ordinal, first get z-scores to have an easier understanding of them
     
     # Get the group-data in ordinal format following the thresholds
-    # Group 1 is the reference group! We aim for all groups to have the same thresholds.
+    # Get the thresholds for all groups. 
+    # Note: (g == 1) as everything is scaled, so the thresholds for the first group will mean the same for the remaining groups. 
+    
+    # Define the threshold by quantiles in the first item (anchor item).
+    # Randomly shift the thresholds of the remaining items by 0.5 to have different thresholds per item
     if(g == 1){
       # Define thresholds
       thresh <- vector(mode = "list", length = 20)
       if (c == 2) {
-        for(j in 1:20){
-          thresh[[j]] <- quantile(tmp[, j], probs = c(0.5))
+        thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.5))
+        for(j in 2:20){
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
         }
       } else if (c == 3) {
+        thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.33, 0.66))
         for(j in 1:20){
-          thresh[[j]] <- quantile(tmp[, j], probs = c(0.33, 0.66))
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
         }
       } else if (c == 4){
+        thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.25, 0.50, 0.75))
         for(j in 1:20){
-          thresh[[j]] <- quantile(tmp[, j], probs = c(0.25, 0.50, 0.75))
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
         }
       } else if (c == 5){
+        thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.2, 0.4, 0.6, 0.8))
         for(j in 1:20){
-          thresh[[j]] <- quantile(tmp[, j], probs = c(0.2, 0.4, 0.6, 0.8))
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
         }
       }
-    }  
-    
-    # # Define thresholds
-    # thresh <- vector(mode = "list", length = 20)
-    # if (c == 2) {
-    #   for(j in 1:20){
-    #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.5))
-    #   }
-    # } else if (c == 3) {
-    #   for(j in 1:20){
-    #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.33, 0.66))
-    #   }
-    # } else if (c == 4){
-    #   for(j in 1:20){
-    #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.25, 0.50, 0.75))
-    #   }
-    # } else if (c == 5){
-    #   for(j in 1:20){
-    #     thresh[[j]] <- quantile(tmp[, j], probs = c(0.2, 0.4, 0.6, 0.8))
-    #   }
-    # }
+    }
     
     
+    # Apply thresholds for each groups depending on whether they are in a non-invariant or invariant group
+    # browser()
     if(g %in% NonInvIdxThresh){
+      g_counter <- g_counter + 1
+      # Name the non-inv thresh list
+      names(NonInvthreshList)[g_counter] <- as.character(g)
+      
       # First, do all invariant items normally
       for(j in c(1:20)[-c(2,3,7,8,12,13,17,18)]){
-        tmp[, j] <- as.factor(as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf))))
+        tmp_ord[, j] <- as.factor(as.numeric(cut(tmp_ord[, j], breaks = c(-Inf, thresh[[j]], Inf))))
       }
       
       # Repeat it for the non-invariant items
+      NonInvthresh <- thresh # done to make sure each group starts at the same point
+      # For non-invariant, it depends on the number of categories
       for(j in c(2,3,7,8,12,13,17,18)){
-        NonInvthresh <- thresh
-        NonInvthresh[[j]][(c/1.5)] <- NonInvthresh[[j]][(c/1.5)] + sample(x = c(-NonInvThreshSize, NonInvThreshSize), size = 1)
-        tmp[, j] <- as.factor(as.numeric(cut(tmp[, j], breaks = c(-Inf, NonInvthresh[[j]], Inf))))
+        # Create the non-invariant thresholds by shifting ALL the thresholds randomly to one side 
+        if (c == 2){
+          NonInvthresh[[j]] <- NonInvthresh[[j]] + sample(x = c(-NonInvThreshSize, NonInvThreshSize), size = 1)
+        } else if (c == 4){
+          NonInvthresh[[j]] <- NonInvthresh[[j]] + sample(x = c(-NonInvThreshSize, NonInvThreshSize), size = 1)
+        } else if (c == 5){
+          NonInvthresh[[j]] <- NonInvthresh[[j]] + sample(x = c(-NonInvThreshSize, NonInvThreshSize), size = 1)
+        }
+        
+        # Create the ordinal data using the non-inv thresholds
+        tmp_ord[, j] <- as.factor(as.numeric(cut(tmp_ord[, j], breaks = c(-Inf, NonInvthresh[[j]], Inf))))
       }
+      
+      # Save the non-inv thresh
+      NonInvthreshList[[g_counter]] <-  NonInvthresh
+      
     } else {
-      for(j in 1:20){
-        tmp[, j] <- as.factor(as.numeric(cut(tmp[, j], breaks = c(-Inf, thresh[[j]], Inf))))
+      for(j in 1:20){ # If the group is invariant, simply use the 
+        tmp_ord[, j] <- as.factor(as.numeric(cut(tmp_ord[, j], breaks = c(-Inf, thresh[[j]], Inf))))
       }
     }
       
     # browser()
     # Assemble the data with all groups
-    SimData <- rbind(SimData, tmp)
+    SimData_ord <- rbind(SimData_ord, tmp_ord)
+    SimData_con <- rbind(SimData_con, tmp_con)
   }
   
   # Add the final labels
   group <- rep(x = c(1:ngroups), each = N_g) # Group variable
-  SimData <- cbind(SimData, group)
-  colnames(SimData) <- c(obs_var, "group")
+  
+  SimData_ord <- cbind(SimData_ord, group)
+  SimData_con <- cbind(SimData_con, group)
+  
+  colnames(SimData_ord) <- c(obs_var, "group")
+  colnames(SimData_con) <- c(obs_var, "group")
   
   # Return data
-  return(list(SimData = SimData, NonInv = list(load = NonInvIdx, thresh = NonInvIdxThresh), psi_g = psi_g,
-              Sigma = Sigma, cov_eta = cov_eta, thresh = thresh))
+  return(list(SimData      = SimData_ord,
+              SimData_con  = SimData_con,
+              NonInv       = list(load   = NonInvIdx, 
+                                  thresh = NonInvIdxThresh), 
+              psi_g        = psi_g,
+              Sigma        = Sigma, 
+              cov_eta      = cov_eta, 
+              threshValues = list(thresh       = thresh, 
+                                  NonInvThresh = NonInvthreshList)
+              )
+         )
 }

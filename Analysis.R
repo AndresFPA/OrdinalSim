@@ -25,7 +25,7 @@ colnames(Results_final)[which(colnames(Results_final) == "V1"):which(colnames(Re
                                                                                                              "ARI.cat", "CC.cat", "RMSE_B1.cat", "RMSE_B2.cat", "RMSE_B3.cat", "RMSE_B4.cat", "exo_mean.cat", "cov_mean.cat")
 # Re-order the cols
 col_order <- c("Condition", "Replication", "nclus", "ngroups", "coeff", "N_g",
-               "balance", "NonInvThreshSize", "c", "threshold", 
+               "balance", "NonInvThreshSize", "NonInvLoadSize", "c", 
                "ARI.con", "CC.con", "RMSE_B1.con", "RMSE_B2.con", "RMSE_B3.con", "RMSE_B4.con", "exo_mean.con", "cov_mean.con", 
                "ARI.cat", "CC.cat", "RMSE_B1.cat", "RMSE_B2.cat", "RMSE_B3.cat", "RMSE_B4.cat", "exo_mean.cat", "cov_mean.cat")
 Results_final <- Results_final[, col_order]
@@ -58,46 +58,38 @@ Results_final %>% dplyr::select(ARI.con:cov_mean.cat) %>% colMeans()
 
 # TRIAL GENERAL ------------------------------------------------------------------------------------
 # Cluster Recovery
-for_plots <- Results_final %>% group_by(N_g, coeff, threshold, c) %>% summarise(across(ARI.con:RMSE_B4.cat, mean))
+for_plots <- Results_final %>% group_by(N_g, coeff, c) %>% summarise(across(ARI.con:RMSE_B4.cat, mean))
 for_plots_long <- pivot_longer(data = for_plots, cols = c(ARI.con, ARI.cat), names_to = "Measure", 
-                               values_to = "ClusRecovery") %>% dplyr::select(Measure, ClusRecovery, N_g, coeff, threshold, c)
+                               values_to = "ClusRecovery") %>% dplyr::select(Measure, ClusRecovery, N_g, coeff, c)
 
 # for_plots_long <- for_plots_long %>% filter(coeff == 0.2)
 
 CairoPNG(filename = "C:/Users/perezalo/OneDrive - Tilburg University/First paper/ClusSim2.png", width = 650, height = 650)
 CairoPNG(filename = "C:/Users/User/OneDrive - Tilburg University/First paper/ClusSim2.png", width = 650, height = 650)
 
-ggplot(for_plots_long, aes(x = N_g, y = ClusRecovery, colour = Measure, linetype = threshold)) + 
+ggplot(for_plots_long, aes(x = N_g, y = ClusRecovery, colour = Measure)) + 
   geom_line(size = 1) + 
   facet_grid(coeff ~ c) + labs(x = "Within-group Sample Size", y = "Cluster Recovery") + 
-  scale_x_continuous(sec.axis = sec_axis(~ . , name = "Number of categories", breaks = NULL, labels = NULL)) + 
+  #scale_x_discrete(name = "Number of categories", position = "top") + 
   theme_bw() + theme(text=element_text(size=12), legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + 
-  scale_color_hue(labels = c("Continuous", "Categorical")) + scale_linetype_manual("Type of threshold", values = c(1, 2), labels = c("Equal", "Unequal")) +
-  scale_y_continuous(sec.axis = sec_axis(~ . , name = "Regression Parameters", breaks = NULL, labels = NULL), limits = c(0,1)) +
+  #scale_color_hue(labels = c("Continuous", "Categorical")) + #scale_linetype_manual("Non-invariance threshold", values = c(0, 0.2, 0.4)) + #, labels = c("Equal", "Unequal")) +
+  #scale_y_discrete(name = "Regression Parameters", position = "right") +
   ggtitle(label = "Cluster Recovery") + geom_point()
 
 dev.off()
 
-# # Parameter Recovery
-# for_plots <- Results_final %>% group_by(N_g, coeff, NonInvIncl, NonInvType) %>% summarise(across(MisClass:Exo_var, mean))
-# for_plots_long <- pivot_longer(data = for_plots, cols = c(RMSE_B1, RMSE_B2, RMSE_B3, RMSE_B4), names_to = "Parameter", 
-#                                values_to = "RMSE") %>% dplyr::select(Parameter, RMSE, N_g, coeff, NonInvIncl, NonInvType)
-# #for_plots_long <- for_plots_long %>% filter(coeff == 0.2)
-# 
-# CairoPNG(filename = "C:/Users/perezalo/OneDrive - Tilburg University/First paper/ParSim2.png", width = 650, height = 650)
-# CairoPNG(filename = "C:/Users/User/OneDrive - Tilburg University/First paper/ParSim2.png", width = 650, height = 650)
-# 
-# ggplot(for_plots_long, aes(x = N_g, y = RMSE, colour = Parameter, linetype = NonInvType)) + 
-#   geom_line(size = 1) + 
-#   facet_grid(coeff ~ NonInvIncl) + labs(x = "Within-group Sample Size", y = "Root Mean Squared Error (RMSE)") + 
-#   scale_x_continuous(sec.axis = sec_axis(~ . , name = "Which non-invariance is included?", breaks = NULL, labels = NULL)) + 
-#   theme_bw() + theme(text=element_text(size=12), legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + 
-#   scale_color_hue(labels = c(expression(paste(beta[1])), expression(paste(beta[2])), expression(paste(beta[3])), expression(paste(beta[4])))) +
-#   scale_linetype_manual("Non-inv Type", values = c(1, 2), labels = c("Fixed", "Random")) +
-#   scale_y_continuous(sec.axis = sec_axis(~ . , name = "Regression Parameters", breaks = NULL, labels = NULL)) +
-#   ggtitle(label = "Parameter Recovery") + geom_point()
-# 
-# dev.off()
+# Cluster Recovery 2 - NONINV THRESH
+for_plots <- Results_final %>% group_by(N_g, NonInvLoadSize, c, NonInvThreshSize) %>% summarise(across(ARI.con:RMSE_B4.cat, mean))
+for_plots_long <- pivot_longer(data = for_plots, cols = c(ARI.con, ARI.cat), names_to = "Measure", 
+                               values_to = "ClusRecovery") %>% dplyr::select(Measure, ClusRecovery, N_g, NonInvLoadSize, c, NonInvThreshSize)
+ggplot(for_plots_long, aes(x = N_g, y = ClusRecovery, colour = Measure, linetype = as.factor(c))) + 
+  geom_line(size = 1) + 
+  facet_grid(NonInvThreshSize ~ NonInvLoadSize) + labs(x = "Within-group Sample Size", y = "Cluster Recovery") + 
+  #scale_x_discrete(name = "Number of categories", position = "top") + 
+  theme_bw() + theme(text=element_text(size=12), legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + 
+  #scale_color_hue(labels = c("Continuous", "Categorical")) + #scale_linetype_manual("Non-invariance threshold", values = c(0, 0.2, 0.4)) + #, labels = c("Equal", "Unequal")) +
+  #scale_y_discrete(name = "Regression Parameters", position = "right") +
+  ggtitle(label = "Cluster Recovery") + geom_point()
 
 # Parameter Recovery (Only one RMSE)
 Results_final$RMSE <- Results_final %>% select(RMSE_B1:RMSE_B4) %>% rowMeans()
