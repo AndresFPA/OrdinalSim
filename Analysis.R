@@ -50,6 +50,8 @@ Results_final <- Results_final %>% filter(!is.na(RMSE_B1.cat))
 
 # General results
 Results_final %>% dplyr::select(ARI.con:cov_mean.cat) %>% colMeans()
+apply(Results_final[,c(3:10)], 2, table)
+table(Results_final[, c(6, 10)])
 
 # Transform to numeric
 # glimpse(Results_final)
