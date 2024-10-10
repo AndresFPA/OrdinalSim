@@ -2,6 +2,7 @@ library(lavaan)
 
 # Set the working directory
 setwd("D:/Andres/Functions")
+setwd("~/GitHub/OrdinalSim/Functions")
 
 # Source the relevant functions
 source("MMG-SEM.R")
@@ -9,13 +10,15 @@ source("E_Step.R")
 source("ModelSelection.R")
 
 setwd("D:/Andres")
+setwd("~/GitHub/OrdinalSim")
 source("DataGeneration.R")
 source("evaluation.R")
+source("evaluation_MM.R")
 
 # Simulation Design
 # Which factors are going to be tested? For now:
 nclus            <- c(2, 4)                 # Number of clusters
-ngroups          <- c(24, 48)               # Number of groups
+ngroups          <- c(36)                   # Number of groups
 coeff            <- c(0.2, 0.3, 0.4)        # Initial regression parameters
 N_g              <- c(50, 100, 200)         # Sample size per groups
 balance          <- c("bal", "unb")         # Cluster size
@@ -76,6 +79,21 @@ genDat_analysis <- function(seed, Design, RowDesign, k, NonInv){
                               NonInvSize       = Design[RowDesign, "NonInvLoadSize"],
                               c                = Design[RowDesign, "c"])
 
+    # Check that there are no empty categories
+    SimData$SimData <- as.data.frame(SimData$SimData)
+    for(g in 1:Design[RowDesign, "ngroups"]){
+      this_g <- SimData$SimData[SimData$SimData$group == g, ]
+      categories <- apply(X = this_g, MARGIN = 2, FUN = unique)
+      for (col in 1:(length(categories) - 1)) {
+        if(!c(all(1:Design[RowDesign, "c"] %in% categories[[col]]))){
+          stop()
+        }
+      }
+    }
+    
+    # Save data
+    save(SimData, file = paste("Data/Data", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+    
     # Get the non-invariant threshold parameters for the syntax
     fake_cfa <- cfa(S1, ordered = T, do.fit = F, data = SimData$SimData)
     PRT <- partable(fake_cfa)
@@ -91,18 +109,54 @@ genDat_analysis <- function(seed, Design, RowDesign, k, NonInv){
                 "F3 =~ m2", "F3 =~ m3",
                 "F4 =~ y2", "F4 =~ y3",
                 NoninvThresh)
+    # browser()
+    # Fit model, including non-invariances
+    ctime.cat <- system.time(
+      fit.cat <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
+                        nclus = Design[RowDesign, "nclus"], seed = seed,
+                        nstarts = 20, allG = T, est_method = "local", ordered = T, 
+                        group.partial = NonInv, group.equal = c("loadings", "thresholds"))
+    )
     
-    fit.con <- MMGSEM(dat = SimData$SimData, step1model = S1, step2model = S2, group = "group", 
-                      nclus = Design[RowDesign, "nclus"], seed = seed,
-                      nstarts = 20, allG = T, est_method = "local", ordered = F, 
-                      NonInv = NonInv, constraints = c("loadings"))
+    ctime.con <- system.time(
+      fit.con <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
+                        nclus = Design[RowDesign, "nclus"], seed = seed,
+                        nstarts = 20, allG = T, est_method = "local", ordered = F, 
+                        group.partial = NonInv, group.equal = c("loadings"))
+    )
     
-    fit.cat <- MMGSEM(dat = SimData$SimData, step1model = S1, step2model = S2, group = "group", 
-                      nclus = Design[RowDesign, "nclus"], seed = seed,
-                      nstarts = 20, allG = T, est_method = "local", ordered = T, 
-                      NonInv = NonInv, constraints = c("loadings", "thresholds"))
+    # Fit model, ignoring non-invariances
+    ctime.ign.cat <- system.time(
+      fit.ign.cat <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
+                            nclus = Design[RowDesign, "nclus"], seed = seed,
+                            nstarts = 20, allG = T, est_method = "local", ordered = T, 
+                            group.partial = NULL, group.equal = c("loadings", "thresholds"))
+    )
     
-    results <- list(fit.con = fit.con, fit.cat = fit.cat)
+    ctime.ign.con <- system.time(
+      fit.ign.con <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
+                            nclus = Design[RowDesign, "nclus"], seed = seed,
+                            nstarts = 20, allG = T, est_method = "local", ordered = F, 
+                            group.partial = NULL, group.equal = c("loadings"))
+    )
+    
+    results <- list(fit.con = fit.con, fit.cat = fit.cat, 
+                    fit.ign.con = fit.ign.con, fit.ign.cat = fit.ign.cat,
+                    SimData = SimData)
+    
+    ### Save computation times
+    save(ctime.con,     file = paste("Times/ConTime", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+    save(ctime.ign.con, file = paste("Times/ConTimeIgn", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+    
+    save(ctime.cat,     file = paste("Times/CatTime", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+    save(ctime.ign.cat, file = paste("Times/CatTimeIgn", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+    
+    # Save results if necessary
+    save(fit.con,     file = paste("Fit/ConFit", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+    save(fit.ign.con, file = paste("Fit/ConFitIgn", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+
+    save(fit.cat,     file = paste("Fit/CatFit", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
+    save(fit.ign.cat, file = paste("Fit/CatFitIgn", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
     
     # If everything goes right, return results
     return(results)
@@ -113,16 +167,35 @@ genDat_analysis <- function(seed, Design, RowDesign, k, NonInv){
 
 # Main simulation function
 do_sim <- function(Design, RowDesign, K){
+  # browser()
   # Create the original clustering matrix for comparison below
   original <- create_original(balance = Design[RowDesign, "balance"], 
                               ngroups = Design[RowDesign, "ngroups"], 
                               nclus   = Design[RowDesign, "nclus"])
   
-  # Create matrix to store results
+  # Create matrices to store results
+  # Including non-invariances
   # 10 columns for: ARI and RMSEA * 2 (continuous and ordinal) 
   ResultsRow <- matrix(data = NA, nrow = (K), ncol = 16)
   colnames(ResultsRow) <- c("ARI.con", "CC.con", "RMSE_B1.con", "RMSE_B2.con", "RMSE_B3.con", "RMSE_B4.con", "exo_mean.con", "cov_mean.con", 
                             "ARI.cat", "CC.cat", "RMSE_B1.cat", "RMSE_B2.cat", "RMSE_B3.cat", "RMSE_B4.cat", "exo_mean.cat", "cov_mean.cat")
+  
+  # 4 columns: RMSE (lambda and theta) * 2 (continuous and ordinal) 
+  ResultsRow_MM <- matrix(data = NA, nrow = (K), ncol = 6)
+  colnames(ResultsRow_MM) <- c("Tuck_lambda.con", "RMSE_lambda.con", "RMSE_theta.con", 
+                               "Tuck_lambda.cat", "RMSE_lambda.cat", "RMSE_theta.cat")
+  
+  # Ignoring non-invariances
+  # 10 columns for: ARI and RMSEA * 2 (continuous and ordinal) 
+  ResultsRow.ign <- matrix(data = NA, nrow = (K), ncol = 16)
+  colnames(ResultsRow.ign) <- c("ARI.con", "CC.con", "RMSE_B1.con", "RMSE_B2.con", "RMSE_B3.con", "RMSE_B4.con", "exo_mean.con", "cov_mean.con", 
+                                "ARI.cat", "CC.cat", "RMSE_B1.cat", "RMSE_B2.cat", "RMSE_B3.cat", "RMSE_B4.cat", "exo_mean.cat", "cov_mean.cat")
+  
+  # 4 columns: RMSE (lambda and theta) * 2 (continuous and ordinal) 
+  ResultsRow_MM.ign <- matrix(data = NA, nrow = (K), ncol = 6)
+  colnames(ResultsRow_MM.ign) <- c("Tuck_lambda.con", "RMSE_lambda.con", "RMSE_theta.con",
+                                   "Tuck_lambda.cat", "RMSE_lambda.cat", "RMSE_theta.cat")
+  
   
   for(k in 1:K){
     print(paste("Replication", k, "out of", K))
@@ -131,46 +204,107 @@ do_sim <- function(Design, RowDesign, K){
     attempts <- 10
     for(j in 1:attempts){
       # Seed will change if there is an error
-      ctimes <- system.time(results <- genDat_analysis(seed = (RowDesign * k * j), Design = Design, RowDesign = RowDesign, k = k))
+      results <- genDat_analysis(seed = (RowDesign * k * j), Design = Design, RowDesign = RowDesign, k = k)
       if(!is.null(results)){
         # If there was no error, break the loop and continue
         break
       }
     }
-    
-    # # Save computation times
-    # save(ctimes, file = paste("Times/Time", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
-    # save(ctimes_ignored, file = paste("Times/TimeIgn", "Row", RowDesign, "Rep", k, ".Rdata", sep = ""))
-    # 
-    # # Save results if necessary
-    # results <- results$Overview
-    # save(results, file = paste("Fit/Fit", "Row", RowDesign, "Rep", k, "-", j, ".Rdata" , sep = ""))
-    # 
-    # results_ignored <- results_ignored$Overview
-    # save(results_ignored, file = paste("Fit/FitIgn", "Row", RowDesign, "Rep", k, "-", j, ".Rdata" , sep = ""))
-    # browser()
+   
     # ---------------------------------------------------------------
     # Evaluate the results
-    Evaluated.con <- evaluation(z_gks    = results$fit.con$posteriors,
-                                beta     = results$fit.con$param$beta_ks,
-                                psi_gks  = results$fit.con$param$psi_gks,
-                                original = original,
-                                nclus    = Design[RowDesign, "nclus"],
-                                coeff    = Design[RowDesign, "coeff"])
-    Evaluated.cat <- evaluation(z_gks    = results$fit.cat$posteriors,
-                                beta     = results$fit.cat$param$beta_ks,
-                                psi_gks  = results$fit.cat$param$psi_gks,
-                                original = original,
-                                nclus    = Design[RowDesign, "nclus"],
-                                coeff    = Design[RowDesign, "coeff"])
-    
-    # Store the results
-    ResultsRow[k, 1:8] <- unlist(Evaluated.con);   
-    ResultsRow[k, 9:16] <- unlist(Evaluated.cat)
+    if(is.null(results)){
+      ResultsRow[k, 1:8]  <- NA  
+      ResultsRow[k, 9:16] <- NA
+      
+      ResultsRow_MM[k, 1:3] <- NA  
+      ResultsRow_MM[k, 4:6] <- NA
+      
+      ResultsRow.ign[k, 1:8]  <- NA  
+      ResultsRow.ign[k, 9:16] <- NA
+      
+      ResultsRow_MM.ign[k, 1:3] <- NA  
+      ResultsRow_MM.ign[k, 4:6] <- NA
+      
+    } else {
+      # Evaluate main results ----------------------------------------------------------------------
+      # Ignoring non-inv
+      Evaluated.ign.con <- evaluation(z_gks    = results$fit.ign.con$posteriors,
+                                      beta     = results$fit.ign.con$param$beta_ks,
+                                      psi_gks  = results$fit.ign.con$param$psi_gks,
+                                      original = original,
+                                      nclus    = Design[RowDesign, "nclus"],
+                                      coeff    = Design[RowDesign, "coeff"])
+      Evaluated.ign.cat <- evaluation(z_gks    = results$fit.ign.cat$posteriors,
+                                      beta     = results$fit.ign.cat$param$beta_ks,
+                                      psi_gks  = results$fit.ign.cat$param$psi_gks,
+                                      original = original,
+                                      nclus    = Design[RowDesign, "nclus"],
+                                      coeff    = Design[RowDesign, "coeff"])
+      
+      # Store the results
+      ResultsRow.ign[k, 1:8]  <- unlist(Evaluated.ign.con)  
+      ResultsRow.ign[k, 9:16] <- unlist(Evaluated.ign.cat)
+      
+      # Including non-inv
+      Evaluated.con <- evaluation(z_gks    = results$fit.con$posteriors,
+                                  beta     = results$fit.con$param$beta_ks,
+                                  psi_gks  = results$fit.con$param$psi_gks,
+                                  original = original,
+                                  nclus    = Design[RowDesign, "nclus"],
+                                  coeff    = Design[RowDesign, "coeff"])
+      Evaluated.cat <- evaluation(z_gks    = results$fit.cat$posteriors,
+                                  beta     = results$fit.cat$param$beta_ks,
+                                  psi_gks  = results$fit.cat$param$psi_gks,
+                                  original = original,
+                                  nclus    = Design[RowDesign, "nclus"],
+                                  coeff    = Design[RowDesign, "coeff"])
+      
+      # Store the results
+      ResultsRow[k, 1:8]  <- unlist(Evaluated.con)  
+      ResultsRow[k, 9:16] <- unlist(Evaluated.cat)
+      
+      # Evaluate MM parameters (secondary results) -------------------------------------------------
+      # Including non-inv
+      Evaluated.con_MM <- evaluation_MM(lambda_est = results$fit.con$param$lambda, 
+                                        theta_est  = results$fit.con$param$theta, 
+                                        lambda     = results$SimData$lambda, 
+                                        theta      = results$SimData$theta, 
+                                        ngroups    = Design[RowDesign, "ngroups"])
+      Evaluated.cat_MM <- evaluation_MM(lambda_est = results$fit.cat$param$lambda, 
+                                        theta_est  = results$fit.cat$param$theta, 
+                                        lambda     = results$SimData$lambda, 
+                                        theta      = results$SimData$theta, 
+                                        ngroups    = Design[RowDesign, "ngroups"])
+      
+      # Store the results
+      ResultsRow_MM[k, 1:3] <- unlist(Evaluated.con_MM)  
+      ResultsRow_MM[k, 4:6] <- unlist(Evaluated.cat_MM)
+      
+      # Ignoring non-inv
+      Evaluated.ign.con_MM <- evaluation_MM(lambda_est = results$fit.ign.con$param$lambda, 
+                                            theta_est  = results$fit.ign.con$param$theta, 
+                                            lambda     = results$SimData$lambda, 
+                                            theta      = results$SimData$theta, 
+                                            ngroups    = Design[RowDesign, "ngroups"])
+      Evaluated.ign.cat_MM <- evaluation_MM(lambda_est = results$fit.ign.cat$param$lambda, 
+                                            theta_est  = results$fit.ign.cat$param$theta, 
+                                            lambda     = results$SimData$lambda, 
+                                            theta      = results$SimData$theta, 
+                                            ngroups    = Design[RowDesign, "ngroups"])
+      
+      # Store the results
+      ResultsRow_MM.ign[k, 1:3] <- unlist(Evaluated.ign.con_MM)  
+      ResultsRow_MM.ign[k, 4:6] <- unlist(Evaluated.ign.cat_MM)
+    }
   }
   
   # Save the results for each row
   save(ResultsRow, file = paste("Result", "Row", RowDesign,".Rdata" , sep =""))
+  save(ResultsRow.ign, file = paste("ResultIgn", "Row", RowDesign,".Rdata" , sep =""))
+  
+  save(ResultsRow_MM, file = paste("MM_Result", "Row", RowDesign,".Rdata" , sep =""))
+  save(ResultsRow_MM.ign, file = paste("MM_ResultIgn", "Row", RowDesign,".Rdata" , sep =""))
   
   # Return the final results
   return(ResultsRow)
@@ -179,6 +313,7 @@ do_sim <- function(Design, RowDesign, K){
 # Set working directory for the results
 # Post-IMPS
 setwd("D:/Andres/Results")
+setwd("C:/Users/perezalo/Documents/GitHub/OrdinalSim/Results")
 
 # Create final results matrix 
 # Everything is multiplied by 2 because we run the model twice (including and not including Non-Inv)
@@ -188,11 +323,12 @@ Results_final <- as.data.frame(matrix(data = NA, nrow = nrow(design)*K, ncol = 1
 Results_final$Replication <- rep(x = 1:K, times = nrow(design))
 Results_final$Condition <- rep(x = 1:nrow(design), each = K)
 
-system.time(for(i in 1:1){
+system.time(for(i in 87:87){
   cat("\n", "Condition", i, "out of", nrow(design), "\n")
   Results <- do_sim(Design = design, RowDesign = i, K = K)
   Results_final[(K*(i-1)+1):(i*K), 1:16] <- Results
 })
+
 
 save(Results_final, file = "FinalResults.Rdata")
 save(design, file = "design.Rdata")

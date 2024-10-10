@@ -49,8 +49,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
                            reg_coeff, balance, c,
                            reliability = "high", NonInvSize = 0.4, 
                            NonInvItems = 2, NonInvG = 0.5, NonInvType = "random",
-                           ResRange = 0.2, NonInvGThresh = 0.5, NonInvThreshSize,
-                           randomVarX = T){
+                           NonInvGThresh = 0.5, NonInvThreshSize){
   
   # Get number of variables
   par_table <- lavaanify(model) # Create parameter table
@@ -133,17 +132,11 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   psi_g <- array(data = diag(m), dim = c(m, m, ngroups), dimnames = list(lat_var, lat_var))
   
   # Generate group-specific values for psi sampling from uniform distributions
-  if (randomVarX == T){
-    exog_var1 <- runif(n = ngroups, min = 0.75, max = 1.25)
-    exog_var2 <- runif(n = ngroups, min = 0.75, max = 1.25)
-    exog_cov <- runif(n = ngroups, min = 0.30, max = 0.60)
-    endo_var1 <- runif(n = ngroups, min = 0.75, max = 1.25) # Total endogenous variance
-    endo_var2 <- runif(n = ngroups, min = 0.75, max = 1.25) # Total endogenous variance
-  } else { # DEPRECATED
-    exog_var1 <- rep(1, times = ngroups) 
-    exog_var2 <- rep(1, times = ngroups) 
-    exog_cov <- rep(1, times = ngroups) 
-  }
+  exog_var1 <- runif(n = ngroups, min = 0.65, max = 0.75)
+  exog_var2 <- runif(n = ngroups, min = 0.65, max = 0.75)
+  exog_cov  <- runif(n = ngroups, min = -0.30, max = 0.30)
+  endo_var1 <- runif(n = ngroups, min = 0.65, max = 0.75) # Total endogenous variance
+  endo_var2 <- runif(n = ngroups, min = 0.65, max = 0.75) # Total endogenous variance
   
   # Insert the corresponding group- and cluster-specific parts of psi
   for(g in 1:ngroups){
@@ -174,57 +167,79 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   
   # Generate the measurement model parameters
   # Lambda (depends on reliability lvl)
-  if (reliability == "low"){load <- .4} else if (reliability == "high"){load <- .6}
+  if (reliability == "low"){load <- .4} else if (reliability == "high"){load <- .5}
   loadings <- sqrt(load)
   
+  ###################################### CONTINUOUS DATA ###########################################
   # Create Invariant Lambda
   Lambda <- matrix(data = rep(x = c(1, rep(loadings, 4), rep(0, p)), times = m)[1:(p*m)], nrow = p, ncol = m)
   
-  # Create non-invariant Lambda (depending on the type of non-invariance)
-  if(NonInvType == "fixed"){
-    LambdaNonInv <- matrix(data = rep(x = c(1, 
-                                            (loadings - NonInvSize), 
-                                            (loadings + NonInvSize), 
-                                            rep(loadings, (4 - NonInvItems)), 
-                                            rep(0, p)), times = m)[1:(p*m)], nrow = p, ncol = m)
-  } else if (NonInvType == "random"){
-    # Sample random non-invariances
-    NonInvariantLoadings <- sample(x = c(runif(100, min = (loadings - NonInvSize) - .1, max = (loadings - NonInvSize) + .1), 
-                                         runif(100, min = (loadings + NonInvSize) - .1, max = (loadings + NonInvSize) + .1)),
-                                   size = NonInvItems*4)
-    
-    # Create a non-invariant lambda matrix
-    LambdaNonInv <- matrix(data = c(1, NonInvariantLoadings[1:NonInvItems], rep(loadings, (4 - NonInvItems)), rep(0, p),
-                                    1, NonInvariantLoadings[(NonInvItems + 1):(NonInvItems*2)], rep(loadings, (4 - NonInvItems)), rep(0, p),
-                                    1, NonInvariantLoadings[((NonInvItems*2) + 1):(NonInvItems*3)], rep(loadings, (4 - NonInvItems)), rep(0, p),
-                                    1, NonInvariantLoadings[((NonInvItems*3) + 1):(NonInvItems*4)], rep(loadings, (4 - NonInvItems))),
-                           nrow = p, ncol = m)
+  # Generate continuous data.
+  # Save lambda for further evaluation
+  allLambdas <- vector(mode = "list", length = ngroups)
+  
+  # Non-invariant Lambda changes per group
+  NonInvIdx <- sample(x = 1:ngroups, size = NonInvG*ngroups, replace = F)
+  
+  if (NonInvSize == 0){
+    NonInvIdx <- 0
   }
   
-  # Theta
+  # Initialize Theta
   Theta <- array(data = 0, dim = c(p, p, ngroups))
   
-  # Sample group-specific (diagonal of) theta values from an uniform distribution
-  for (g in 1:ngroups){
-    Theta[, , g] <- diag(runif(n = p, min = ((1 - load) - (ResRange/2)), max = ((1 - load) + (ResRange/2))))
-  }
-  
-  # Generate sample covariance matrix (sigma) per groups
+  # Initialize Sigma
   Sigma <- array(data = 0, dim = c(p, p, ngroups))
   # browser()
-  # Include non-invariance in the loadings according to NonInvG
-  # Which groups are non-invariant? (random sampling)
-  NonInvIdx <- sample(x = 1:ngroups, size = NonInvG*ngroups, replace = F)
   for(g in 1:ngroups){
     # Non-invariance - How many groups?
     if (g %in% NonInvIdx){
+      # Create non-invariant Lambda (depending on the type of non-invariance)
+      LambdaNonInv <- matrix(data = rep(x = c(1, 
+                                              (loadings - NonInvSize), 
+                                              (loadings + NonInvSize), 
+                                              rep(loadings, (4 - NonInvItems)), 
+                                              rep(0, p)), times = m)[1:(p*m)], nrow = p, ncol = m)
+      
+      # Sample random non-invariances
+      NonInvariantLoadings <- sample(x = c(runif(100, min = (loadings - NonInvSize) - .1, max = (loadings - NonInvSize) + .1), 
+                                           runif(100, min = (loadings + NonInvSize) - .1, max = (loadings + NonInvSize) + .1)),
+                                     size = NonInvItems*4)
+      
+      # Create a non-invariant lambda matrix
+      LambdaNonInv <- matrix(data = c(1, NonInvariantLoadings[1:NonInvItems], rep(loadings, (4 - NonInvItems)), rep(0, p),
+                                      1, NonInvariantLoadings[(NonInvItems + 1):(NonInvItems*2)], rep(loadings, (4 - NonInvItems)), rep(0, p),
+                                      1, NonInvariantLoadings[((NonInvItems*2) + 1):(NonInvItems*3)], rep(loadings, (4 - NonInvItems)), rep(0, p),
+                                      1, NonInvariantLoadings[((NonInvItems*3) + 1):(NonInvItems*4)], rep(loadings, (4 - NonInvItems))),
+                             nrow = p, ncol = m)
+      
+      # Save lambda for future evaluation
+      allLambdas[[g]] <- LambdaNonInv 
+      
+      # Generate Theta per group
+      theta_tmp <- lapply(X = c(1:4), FUN = \(x) 1 - ((allLambdas[[g]][, x])^2 * diag(cov_eta[, , g])[x]))
+      theta_tmp <- unlist(theta_tmp)
+      theta_tmp <- theta_tmp[theta_tmp != 1]
+      Theta[, , g] <- diag(theta_tmp, nrow = p, ncol = p)
+      
+      # Generate data per group
       Sigma[, , g] <- LambdaNonInv %*% cov_eta[, , g] %*% t(LambdaNonInv) + Theta[, , g]
     } else if (!c(g %in% NonInvIdx)){
+      # Save lambda for future evaluation
+      allLambdas[[g]] <- Lambda 
+      
+      # Generate Theta per group
+      theta_tmp <- lapply(X = 1:4, FUN = \(x) 1 - ((allLambdas[[g]][, x])^2 * diag(cov_eta[, , g])[x]))
+      theta_tmp <- unlist(theta_tmp)
+      theta_tmp <- theta_tmp[theta_tmp != 1]
+      Theta[, , g] <- diag(theta_tmp, nrow = p, ncol = p)
+      
+      # Generate data per group
       Sigma[, , g] <- Lambda %*% cov_eta[, , g] %*% t(Lambda) + Theta[, , g]
     }
   }
-
   
+  ######################################### ORDINAL DATA ###########################################
   # Data Generation final
   # Get non-invariant thresholds
   NonInvIdxThresh <- sample(x = 1:ngroups, size = NonInvGThresh*ngroups, replace = F)
@@ -236,7 +251,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   # For now, mu would be 0 as we are only interested in centered variables
   SimData_ord <- c()
   SimData_con <- c()
-  
+  # browser()
   for(g in 1:ngroups){
     # Generate the data per group
     tmp_con <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T) # Save continuous data, just in case
@@ -247,33 +262,32 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
     # Note: (g == 1) as everything is scaled, so the thresholds for the first group will mean the same for the remaining groups. 
     
     # Define the threshold by quantiles in the first item (anchor item).
-    # Randomly shift the thresholds of the remaining items by 0.5 to have different thresholds per item
+    # Randomly shift the thresholds of the remaining items by 0.2 to have different thresholds per item
+    # Define thresholds
     if(g == 1){
-      # Define thresholds
       thresh <- vector(mode = "list", length = 20)
       if (c == 2) {
         thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.5))
         for(j in 2:20){
-          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.2, 0.2), size = 1)
         }
       } else if (c == 3) {
         thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.33, 0.66))
-        for(j in 1:20){
-          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
+        for(j in 2:20){
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.2, 0.2), size = 1)
         }
       } else if (c == 4){
         thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.25, 0.50, 0.75))
-        for(j in 1:20){
-          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
+        for(j in 2:20){
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.2, 0.2), size = 1)
         }
       } else if (c == 5){
         thresh[[1]] <- quantile(tmp_ord[, 1], probs = c(0.2, 0.4, 0.6, 0.8))
-        for(j in 1:20){
-          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.3, 0.3), size = 1)
+        for(j in 2:20){
+          thresh[[j]] <- thresh[[1]] + sample(x = c(-0.2, 0.2), size = 1)
         }
       }
     }
-    
     
     # Apply thresholds for each groups depending on whether they are in a non-invariant or invariant group
     # browser()
@@ -301,7 +315,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
         }
         
         # Create the ordinal data using the non-inv thresholds
-        tmp_ord[, j] <- as.factor(as.numeric(cut(tmp_ord[, j], breaks = c(-Inf, NonInvthresh[[j]], Inf))))
+        tmp_ord[, j] <- ordered(as.numeric(cut(tmp_ord[, j], breaks = c(-Inf, NonInvthresh[[j]], Inf))))
       }
       
       # Save the non-inv thresh
@@ -309,7 +323,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
       
     } else {
       for(j in 1:20){ # If the group is invariant, simply use the 
-        tmp_ord[, j] <- as.factor(as.numeric(cut(tmp_ord[, j], breaks = c(-Inf, thresh[[j]], Inf))))
+        tmp_ord[, j] <- ordered(as.numeric(cut(tmp_ord[, j], breaks = c(-Inf, thresh[[j]], Inf))))
       }
     }
       
@@ -337,7 +351,9 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
               Sigma        = Sigma, 
               cov_eta      = cov_eta, 
               threshValues = list(thresh       = thresh, 
-                                  NonInvThresh = NonInvthreshList)
+                                  NonInvThresh = NonInvthreshList),
+              theta        = Theta,
+              lambda       = allLambdas
               )
          )
 }

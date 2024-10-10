@@ -16,77 +16,6 @@ library("combinat")
 # library("FARI")
 
 evaluation <- function(beta, z_gks, original, nclus, coeff, psi_gks, mg_sem = F){
-  if (mg_sem == T){
-    # True cluster label
-    true_or <- original
-    for (i in 1:ncol(original)){
-      original[original[, i] != 0, i] <- i
-    }
-    or_vec <- c(original)[c(original) != 0]
-    or_vec <- factor(x = or_vec, levels = 1:nclus) # Just in case there is an empty cluster
-    
-    clus1 <- which(or_vec == 1)
-    clus2 <- which(or_vec == 2)
-    
-    # Beta vector
-    betaVec <- lapply(X = 1:length(beta), FUN = function(x){c(beta[[x]])[c(beta[[x]]) != 0]})
-    
-    # Root Mean Squared Error (RMSE)
-    SquaredErrorB1 <- numeric(length(beta))
-    SquaredErrorB2 <- numeric(length(beta))
-    SquaredErrorB3 <- numeric(length(beta))
-    SquaredErrorB4 <- numeric(length(beta))
-    
-    # Calculate corresponding measures
-    # Cluster 1
-    for(g in clus1){
-      SquaredErrorB1[g] <- (0 - betaVec[[g]][2])^2
-      SquaredErrorB2[g] <- (coeff - betaVec[[g]][1])^2
-      SquaredErrorB3[g] <- (coeff - betaVec[[g]][3])^2
-      SquaredErrorB4[g] <- (coeff - betaVec[[g]][4])^2
-    }
-    
-    # Cluster 2
-    for(g in clus2){
-      SquaredErrorB1[g] <- (coeff - betaVec[[g]][2])^2
-      SquaredErrorB2[g] <- (0 - betaVec[[g]][1])^2
-      SquaredErrorB3[g] <- (coeff - betaVec[[g]][3])^2
-      SquaredErrorB4[g] <- (coeff - betaVec[[g]][4])^2 
-    }
-    
-    if (nclus == 4){
-      clus3 <- which(or_vec == 3)
-      clus4 <- which(or_vec == 4)
-      
-      # Cluster 3
-      for(g in clus3){
-        SquaredErrorB1[g] <- (coeff - betaVec[[g]][2])^2
-        SquaredErrorB2[g] <- (coeff - betaVec[[g]][1])^2
-        SquaredErrorB3[g] <- (0 - betaVec[[g]][3])^2
-        SquaredErrorB4[g] <- (coeff - betaVec[[g]][4])^2
-      }
-      
-      # Cluster 4
-      for(g in clus4){
-        SquaredErrorB1[g] <- (coeff - betaVec[[g]][2])^2
-        SquaredErrorB2[g] <- (coeff - betaVec[[g]][1])^2
-        SquaredErrorB3[g] <- (coeff - betaVec[[g]][3])^2
-        SquaredErrorB4[g] <- (0 - betaVec[[g]][4])^2 
-      }
-    }
-    
-    # RMSE
-    RMSE_B1 <- sqrt(mean(SquaredErrorB1))
-    RMSE_B2 <- sqrt(mean(SquaredErrorB2))
-    RMSE_B3 <- sqrt(mean(SquaredErrorB3))
-    RMSE_B4 <- sqrt(mean(SquaredErrorB4))
-    
-    return(list(RMSE = list(RMSE_B1 = RMSE_B1,
-                            RMSE_B2 = RMSE_B2,
-                            RMSE_B3 = RMSE_B3, 
-                            RMSE_B4 = RMSE_B4)))
-  }
-  
   # Transform posterior classification probabilities to hard clustering for the sake of the evaluation
   # clusResult <- ifelse(test = z_gks > .5, yes = 1, no = 0)
   clusResult <- t(apply(z_gks, 1, function(x) as.numeric(x == max(x))))
@@ -257,7 +186,7 @@ evaluation <- function(beta, z_gks, original, nclus, coeff, psi_gks, mg_sem = F)
 
 # Function to create the original cluster matrix
 create_original <- function(balance, ngroups, nclus){
-  if (balance == "unbalanced"){
+  if (balance == "unb"){
     unb <- c(rep(0, ngroups), rep(1, (ngroups*.25)/(nclus - 1)))
     original <- matrix(data = c(rep(1, ngroups*.75), rep(unb, nclus - 1)), nrow = ngroups, ncol = nclus)
   } else {
