@@ -125,7 +125,7 @@ MMGSEM <- function(dat, S1 = NULL, S2 = NULL,
                                 group.partial    = noninv)
       )
     }
-    
+    # browser()
     # When ordered = T, by default, measEq.syntax standardizes the lv following Wu&Estabrook(2016).
     # MMG-SEM does not work with standardized lv by default. Thus, a rescaling is needed
     rescaling <- T # Set to TRUE, it will come later in the code
