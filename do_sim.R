@@ -1,7 +1,7 @@
 library(lavaan)
 
 # Set the working directory
-setwd("D:/Andres/Functions")
+# setwd("D:/Andres/Functions")
 setwd("~/GitHub/OrdinalSim/Functions")
 
 # Source the relevant functions
@@ -9,7 +9,7 @@ source("MMG-SEM.R")
 source("E_Step.R")
 source("ModelSelection.R")
 
-setwd("D:/Andres")
+# setwd("D:/Andres")
 setwd("~/GitHub/OrdinalSim")
 source("DataGeneration.R")
 source("evaluation.R")
@@ -312,7 +312,7 @@ do_sim <- function(Design, RowDesign, K){
 
 # Set working directory for the results
 # Post-IMPS
-setwd("D:/Andres/Results")
+# setwd("D:/Andres/Results")
 setwd("C:/Users/perezalo/Documents/GitHub/OrdinalSim/Results")
 
 # Create final results matrix 
@@ -323,7 +323,7 @@ Results_final <- as.data.frame(matrix(data = NA, nrow = nrow(design)*K, ncol = 1
 Results_final$Replication <- rep(x = 1:K, times = nrow(design))
 Results_final$Condition <- rep(x = 1:nrow(design), each = K)
 
-system.time(for(i in 87:87){
+system.time(for(i in 289:289){
   cat("\n", "Condition", i, "out of", nrow(design), "\n")
   Results <- do_sim(Design = design, RowDesign = i, K = K)
   Results_final[(K*(i-1)+1):(i*K), 1:16] <- Results

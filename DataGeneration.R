@@ -48,8 +48,8 @@ library(matrixcalc)
 DataGeneration <- function(model, nclus, ngroups, N_g,
                            reg_coeff, balance, c,
                            reliability = "high", NonInvSize = 0.4, 
-                           NonInvItems = 2, NonInvG = 0.5, NonInvType = "random",
-                           NonInvGThresh = 0.5, NonInvThreshSize){
+                           NonInvItems = 2, NonInvG = 1, NonInvType = "random",
+                           NonInvGThresh = 1, NonInvThreshSize){
   
   # Get number of variables
   par_table <- lavaanify(model) # Create parameter table

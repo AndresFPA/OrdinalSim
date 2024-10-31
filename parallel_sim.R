@@ -15,12 +15,12 @@ source("evaluation_MM.R")
 # Simulation Design
 # Which factors are going to be tested? For now:
 nclus            <- c(2, 4)                 # Number of clusters
-ngroups          <- c(12)                   # Number of groups
+ngroups          <- c(36)                   # Number of groups
 coeff            <- c(0.2, 0.3, 0.4)        # Initial regression parameters
 N_g              <- c(50, 100, 200)         # Sample size per groups
 balance          <- c("bal", "unb")         # Cluster size
-NonInvThreshSize <- c(0, 0.2, 0.4)          # Threshold non-invariance size
-NonInvLoadSize   <- c(0.2, 0.6)             # Loading non-invariance size
+NonInvThreshSize <- c(0.25, 0.50)           # Threshold non-invariance size
+NonInvLoadSize   <- c(0.2, 0.4)             # Loading non-invariance size
 c                <- c(2, 4, 5)              # Number of categories
 
 model <- '
@@ -76,6 +76,7 @@ genDat_analysis <- function(seed, RowDesign, k, NonInv){
   
   # Check that there are no empty categories
   SimData$SimData <- as.data.frame(SimData$SimData)
+  browser()
   for(g in 1:design[RowDesign, "ngroups"]){
     this_g <- SimData$SimData[SimData$SimData$group == g, ]
     categories <- apply(X = this_g, MARGIN = 2, FUN = unique)
@@ -110,14 +111,14 @@ genDat_analysis <- function(seed, RowDesign, k, NonInv){
   ctime.cat <- system.time(
     fit.cat <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
                       nclus = design[RowDesign, "nclus"], seed = seed,
-                      nstarts = 20, allG = T, est_method = "local", ordered = T, 
+                      nstarts = 20, ordered = T, 
                       group.partial = NonInv, group.equal = c("loadings", "thresholds"))
   )
   
   ctime.con <- system.time(
     fit.con <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
                       nclus = design[RowDesign, "nclus"], seed = seed,
-                      nstarts = 20, allG = T, est_method = "local", ordered = F, 
+                      nstarts = 20, ordered = F, 
                       group.partial = NonInv, group.equal = c("loadings"))
   )
   
@@ -125,14 +126,14 @@ genDat_analysis <- function(seed, RowDesign, k, NonInv){
   ctime.ign.cat <- system.time(
     fit.ign.cat <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
                           nclus = design[RowDesign, "nclus"], seed = seed,
-                          nstarts = 20, allG = T, est_method = "local", ordered = T, 
+                          nstarts = 20, ordered = T, 
                           group.partial = NULL, group.equal = c("loadings", "thresholds"))
   )
   
   ctime.ign.con <- system.time(
     fit.ign.con <- MMGSEM(dat = SimData$SimData, S1 = S1, S2 = S2, group = "group", 
                           nclus = design[RowDesign, "nclus"], seed = seed,
-                          nstarts = 20, allG = T, est_method = "local", ordered = F, 
+                          nstarts = 20, ordered = F, 
                           group.partial = NULL, group.equal = c("loadings"))
   )
   
@@ -321,7 +322,40 @@ Results_final <- as.data.frame(matrix(data = NA, nrow = nrow(design)*K, ncol = 1
 Results_final$Replication <- rep(x = 1:K, times = nrow(design))
 Results_final$Condition <- rep(x = 1:nrow(design), each = K)
 
+# ###################################################################### #
+# ######################## START PARALLELIZATION ####################### #
+# ###################################################################### #
+library(foreach)
+library(parallel)
+library(doParallel)
+library(doSNOW)
 
+rm(results)
+
+# Get object names
+obj <- objects()
+
+# Setup parallel cluster
+cl <- makeCluster(1)
+
+registerDoParallel(cl)
+
+# Export the necessary function and variables to the cluster
+clusterEvalQ(cl, {
+  library(lavaan)
+  library(MASS)
+  library(combinat)
+})
+clusterEvalQ(cl, setwd("C:/Users/perezalo/Documents/GitHub/OrdinalSim/Results"))
+parallel::clusterExport(cl, varlist = obj)
+
+# Parallel execution over RowDesign
+# results <- parLapply(cl = cl, X = 1:2, fun = do_sim)
+results <- foreach(RowDesign = 1:2) %dopar% {
+  do_sim(RowDesign)
+}
+
+stopCluster(cl)
 
 
 
