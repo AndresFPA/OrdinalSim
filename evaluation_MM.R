@@ -59,6 +59,15 @@ evaluation_MM <- function(lambda_est, theta_est, lambda, theta, ngroups){
     Tuck_Lambda_Group[g] <- mean(diag(psych::factor.congruence(x = lambda_est[[g]], y = lambda[[g]])))
   }
   
+  # Re-scale lambda (will do nothing to continuous results)
+  # Done due to the scaling used when using the categorical estimator (i.e., std.lv = T)
+  for (g in 1:ngroups) {
+    loadings <- apply(lambda_est[[g]], 2, \(x) {x[which(x != 0)]})[1, ]
+    ratios <- 1/loadings # Ratio to rescale the remaining loadings
+    lambda_est[[g]] <- sapply(1:length(ratios), FUN = \(x) {lambda_est[[g]][, x] * ratios[x]})
+    colnames(lambda_est[[g]]) <- names(ratios)
+  }
+  
   # lambda - RMSE
   lambdaVec <- lapply(X = 1:ngroups, FUN = function(x){c(lambda[[x]])[lambda[[x]] != 0 & round(lambda[[x]], 4) != 1]})
   lambdaVec <- unlist(lambdaVec)
@@ -83,11 +92,22 @@ evaluation_MM <- function(lambda_est, theta_est, lambda, theta, ngroups){
   Tuck_Lambda <- mean(Tuck_Lambda_Group)
   RMSE_Lambda <- sqrt(mean(SquaredErrorLambda))
   RMSE_Theta  <- sqrt(mean(SquaredErrorTheta))
+  
+  # Relative bias
+  RelativeBiasLambda <- (lambdaEstVec - lambdaVec)/lambdaVec
+  RelativeBiasTheta <- (thetaVec - thetaEstVec)/thetaVec
+  
+  # Mean rel bias
+  Mean_RelBiasLambda <- mean(RelativeBiasLambda)
+  Mean_RelBiasTheta  <- mean(RelativeBiasTheta)
+  
   # browser()
   # Return results ---------------------------------------------------------------------------------
-  return(list(ParamRecovery = list(Tuck_Lambda = Tuck_Lambda, 
-                                   RMSE_Lambda = RMSE_Lambda, 
-                                   RMSE_Theta  = RMSE_Theta)))
+  return(list(ParamRecovery = list(Tuck_Lambda    = Tuck_Lambda, 
+                                   RMSE_Lambda    = RMSE_Lambda, 
+                                   RMSE_Theta     = RMSE_Theta,
+                                   RelBias_Lambda = Mean_RelBiasLambda,
+                                   RelBias_Theta  = Mean_RelBiasTheta)))
 }
 
 

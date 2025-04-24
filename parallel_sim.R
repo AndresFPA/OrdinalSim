@@ -17,7 +17,7 @@ source("evaluation_MM.R")
 nclus            <- c(2, 4)                 # Number of clusters
 ngroups          <- c(36)                   # Number of groups
 coeff            <- c(0.2, 0.3, 0.4)        # Initial regression parameters
-N_g              <- c(50, 100, 200)         # Sample size per groups
+N_g              <- c(50, 100, 300)         # Sample size per groups
 balance          <- c("bal", "unb")         # Cluster size
 NonInvThreshSize <- c(0.25, 0.50)           # Threshold non-invariance size
 NonInvLoadSize   <- c(0.2, 0.4)             # Loading non-invariance size
@@ -59,7 +59,7 @@ rm(balance, coeff, N_g, nclus, ngroups, c, NonInvLoadSize, NonInvThreshSize)
 # First, to avoid stopping due to errors, create a function with data generation and MMGSEM
 # Errors come from non positive definite cov matrices. This code allows the re-sample
 genDat_analysis <- function(seed, RowDesign, k, NonInv){
-  
+  # browser()
   # Set seed per design condition (row) and replication (K)
   set.seed(seed)
   # Generate data
@@ -76,7 +76,7 @@ genDat_analysis <- function(seed, RowDesign, k, NonInv){
   
   # Check that there are no empty categories
   SimData$SimData <- as.data.frame(SimData$SimData)
-  browser()
+  
   for(g in 1:design[RowDesign, "ngroups"]){
     this_g <- SimData$SimData[SimData$SimData$group == g, ]
     categories <- apply(X = this_g, MARGIN = 2, FUN = unique)
@@ -164,6 +164,7 @@ genDat_analysis <- purrr::safely(.f = genDat_analysis, otherwise = NULL)
 
 # Main simulation function
 do_sim <- function(RowDesign){
+  # browser()
   cat("\n", "Condition", RowDesign, "out of", nrow(design), "\n")
   # Create the original clustering matrix for comparison below
   original <- create_original(balance = design[RowDesign, "balance"], 
@@ -316,11 +317,13 @@ setwd("C:/Users/perezalo/Documents/GitHub/OrdinalSim/Results")
 
 # Create final results matrix 
 # Everything is multiplied by 2 because we run the model twice (including and not including Non-Inv)
-K <- 1 # Number of replications per condition
+K <- 50 # Number of replications per condition
 
 Results_final <- as.data.frame(matrix(data = NA, nrow = nrow(design)*K, ncol = 16))
 Results_final$Replication <- rep(x = 1:K, times = nrow(design))
 Results_final$Condition <- rep(x = 1:nrow(design), each = K)
+save(Results_final, file = "FinalResults.Rdata")
+save(design, file = "design.Rdata")
 
 # ###################################################################### #
 # ######################## START PARALLELIZATION ####################### #

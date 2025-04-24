@@ -254,7 +254,7 @@ DataGeneration <- function(model, nclus, ngroups, N_g,
   # browser()
   for(g in 1:ngroups){
     # Generate the data per group
-    tmp_con <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = T) # Save continuous data, just in case
+    tmp_con <- mvrnorm(n = N_g, mu = rep(0, p), Sigma = Sigma[, , g], empirical = F) # Save continuous data, just in case
     tmp_ord <- scale(tmp_con) # For ordinal, first get z-scores to have an easier understanding of them
     
     # Get the group-data in ordinal format following the thresholds

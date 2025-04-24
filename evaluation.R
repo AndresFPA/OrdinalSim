@@ -21,6 +21,20 @@ evaluation <- function(beta, z_gks, original, nclus, coeff, psi_gks, mg_sem = F)
   clusResult <- t(apply(z_gks, 1, function(x) as.numeric(x == max(x))))
   colnames(clusResult) <- paste("Cluster", seq_len(nclus))
   
+  # In some cases, the model does not converge and returns starting values, this can cause posteriors of exactly 0.5
+  # In such cases, the code does not work. Must stop the code here
+  if(all(clusResult == 1)){
+    return(list(ClusRecovery = list(ARI = NA, 
+                                    CorrectClus = NA),
+                ParamRecovery = list(RMSE = list(RMSE_B1 = NA,
+                                                 RMSE_B2 = NA,
+                                                 RMSE_B3 = NA, 
+                                                 RMSE_B4 = NA)), 
+                # ProporGlobalMax = ProporGlobalMax, 
+                exo_mean = NA,
+                cov_mean = NA))
+  }
+  
   # Organize columns in the same way as the original order (NOT USED NOW)
   # i.e. first cluster has the first x groups, second cluster the second x groups, etc.
   # clusResult <- clusResult[, names(sort(apply(X = clusResult, MARGIN = 2, FUN = which.max)))]
@@ -73,9 +87,9 @@ evaluation <- function(beta, z_gks, original, nclus, coeff, psi_gks, mg_sem = F)
   MisClassErrorOut <- min(MisClassError)
   
   # Which permutation is the best one? (will be used later)
-  bestPerm <- permutedClusters[[which.min(MisClassError)]]
-  bestPermVec <- clusVec[[which.min(MisClassError)]]
-  #browser()
+  bestPerm <- permutedClusters[[which.min(MisClassError)[1]]]
+  bestPermVec <- clusVec[[which.min(MisClassError)[1]]]
+  
   # Cluster Recovery 2. Adjusted Rand Index (ARI)
   ARI_res <- adjrandindex(part1 = bestPermVec, part2 = or_vec)
   
@@ -200,7 +214,7 @@ create_original <- function(balance, ngroups, nclus){
 
 
 # computation of adjusted rand index
-adjrandindex <- function(part1,part2){
+adjrandindex <- function(part1, part2){
   part1 <- as.numeric(part1)
   part2 <- as.numeric(part2)
   

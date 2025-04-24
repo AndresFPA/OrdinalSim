@@ -1292,7 +1292,7 @@ MMGSEM <- function(dat, S1 = NULL, S2 = NULL,
   return(list(
     posteriors    = z_gks,
     final_fit     = s2out, # Final fit of step 2 (contains all group-cluster combinations)
-    MM            = S1output, # Output of step 1 (measurement model)
+    # MM            = S1output, # Output of step 1 (measurement model)
     param         = list(psi_gks = psi_gks, lambda = lambda_gs, # Lambda is invariant across all groups
                          theta = theta_gs, beta_ks = beta_ks, cov_eta = cov_eta), # Factor covariance matrix from first step
     logLik        = list(loglik        = LL, # Final logLik of the model (its meaning depends on argument "sam_method")
@@ -1410,7 +1410,9 @@ Step1 <- function(S1 = S1, s1_fit = s1_fit, centered = centered,
       S1output <- s1_fit
     } else if (is.null(s1_fit)) {
       S1output <- lavaan::cfa(
-        model = S1, data = centered, group = group,
+        model = S1, data = centered, group = group, ceq.simple = TRUE,
+        bounds = TRUE, optim.attempts = 1L, check.gradient = FALSE,
+        control = list(rel.tol = 1e-05),
         se = "none", test = "none",
         baseline = FALSE, h1 = FALSE,
         implied = FALSE, loglik = FALSE,

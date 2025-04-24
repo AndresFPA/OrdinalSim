@@ -5,24 +5,22 @@ library(xtable)
 library(ggpubr)
 library(ggplot2)
 library(qwraps2)
-library(Cairo)
-
-CairoWin()
+library(wesanderson)
+# library(Cairo)
+# CairoWin()
 
 # Set wd
-setwd("~/GitHub/OrdinalSim/Results")
+setwd("C:/Users/User/OneDrive - Tilburg University/1. Papers/Paper 3/R/24-11-06 Sim Results/1. Definitive Results")
 
 # Load empty final results matrix
-load("FinalResults.Rdata")
-load("design.Rdata")
+load("Ignored/FinalResults.Rdata")
+load("Ignored/design.Rdata")
+load("Ignored/NonConverged_idx.Rdata")
 
 # Organize the data frame
 design$Condition <- as.numeric(rownames(design))
 Results_final <- merge(x = design, y = Results_final, by = "Condition")
 
-# Add names to the unnamed cols
-colnames(Results_final)[which(colnames(Results_final) == "V1"):which(colnames(Results_final) == "V16")] <- c("ARI.con", "CC.con", "RMSE_B1.con", "RMSE_B2.con", "RMSE_B3.con", "RMSE_B4.con", "exo_mean.con", "cov_mean.con", 
-                                                                                                             "ARI.cat", "CC.cat", "RMSE_B1.cat", "RMSE_B2.cat", "RMSE_B3.cat", "RMSE_B4.cat", "exo_mean.cat", "cov_mean.cat")
 # Re-order the cols
 col_order <- c("Condition", "Replication", "nclus", "ngroups", "coeff", "N_g",
                "balance", "NonInvThreshSize", "NonInvLoadSize", "c", 
@@ -39,19 +37,26 @@ start.idx <- which(colnames(Results_final) == "ARI.con")
 end.idx   <- ncol(Results_final)
 for (i in ncond) {
   test <- NA
-  test <- try(load(paste0("ResultRow", i, ".Rdata")))
+  # test <- try(load(paste0("Ignored/ResultIgnRow", i, ".Rdata")))
+  test <- try(load(paste0("Normal/ResultRow", i, ".Rdata")))
   if(!c(class(test) == "try-error")){
-    Results_final[(K*(i-1)+1):(i*K), start.idx:end.idx] <- ResultsRow
+    # Results_final[(K*(i-1)+1):(i*K), start.idx:end.idx] <- ResultsRow.ign
+     Results_final[(K*(i-1)+1):(i*K), start.idx:end.idx] <- ResultsRow
   }
 }
 
-# Remove NA results
-Results_final <- Results_final %>% filter(!is.na(RMSE_B1.cat))
+# Remove non-run/non-converged rows
+# Remove NA results (non-run cases and non-converged)
+Results_final <- Results_final[-NA_idx,] # From the first step
+
+# From the second step
+Results_final <- Results_final %>% filter(!is.na(RMSE_B1.cat) & !is.na(RMSE_B1.con))
 
 # General results
-Results_final %>% dplyr::select(ARI.con:cov_mean.cat) %>% colMeans()
+Results_final %>% dplyr::select(ARI.con:cov_mean.cat) %>% colMeans() %>% round(., 2)
 apply(Results_final[,c(3:10)], 2, table)
 table(Results_final[, c(6, 10)])
+table(Results_final[, c(9, 10)])
 
 # Transform to numeric
 # glimpse(Results_final)
@@ -60,23 +65,53 @@ table(Results_final[, c(6, 10)])
 
 # TRIAL GENERAL ------------------------------------------------------------------------------------
 # Cluster Recovery
-for_plots <- Results_final %>% group_by(N_g, balance, nclus) %>% summarise(across(ARI.con:RMSE_B4.cat, mean))
+for_plots <- Results_final %>% group_by(N_g, c, coeff) %>% summarise(across(ARI.con:RMSE_B4.cat, mean))
 for_plots_long <- pivot_longer(data = for_plots, cols = c(ARI.con, ARI.cat), names_to = "Measure", 
-                               values_to = "ClusRecovery") %>% dplyr::select(Measure, ClusRecovery, N_g, balance, nclus)
+                               values_to = "ClusRecovery") %>% dplyr::select(Measure, ClusRecovery, N_g, c, coeff)
 
 # for_plots_long <- for_plots_long %>% filter(coeff == 0.2)
 
 # CairoPNG(filename = "C:/Users/perezalo/OneDrive - Tilburg University/First paper/ClusSim2.png", width = 650, height = 650)
 # CairoPNG(filename = "C:/Users/User/OneDrive - Tilburg University/First paper/ClusSim2.png", width = 650, height = 650)
 
-ggplot(for_plots_long, aes(x = N_g, y = ClusRecovery, colour = Measure)) + 
-  geom_line(size = 1) + 
-  facet_grid(balance ~ nclus) + labs(x = "Within-group Sample Size", y = "Cluster Recovery") + 
-  #scale_x_discrete(name = "Number of categories", position = "top") + 
-  theme_bw() + theme(text=element_text(size=12), legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + 
-  #scale_color_hue(labels = c("Continuous", "Categorical")) + #scale_linetype_manual("Non-invariance threshold", values = c(0, 0.2, 0.4)) + #, labels = c("Equal", "Unequal")) +
-  #scale_y_discrete(name = "Regression Parameters", position = "right") +
-  ggtitle(label = "Cluster Recovery") + geom_point()
+ggplot(for_plots_long, aes(x = N_g, y = ClusRecovery, colour = Measure)) +
+  geom_line(size = 1) +
+  geom_point() +
+  
+  # Update facet grid with wrapped text
+  facet_grid(
+    c ~ coeff,
+    labeller = labeller(
+      coeff = function(x) paste("Beta:\n", x),      # Add line break
+      c = function(x) paste("Categories (c):\n", x) # Add line break
+    )
+  ) +
+  
+  # Axis and legend labels
+  labs(
+    x = "Within-group Sample Size", 
+    y = "Cluster Recovery", 
+    colour = "Measure"
+  ) +
+  
+  # General theme settings
+  theme_bw() +
+  theme(
+    text = element_text(size = 12),
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5),  # Centre title
+    strip.text = element_text(size = 10),   # Adjust facet label text size
+    legend.text = element_text(size = 10),  # Adjust legend size
+    legend.title = element_text(size = 12)
+  ) +
+  
+  scale_colour_manual(
+    values = wes_palette(n = 2, name = "Darjeeling1"), # Keep your desired colours
+    labels = c("ARI DWLS", "ARI ML")   # Change labels here
+  ) # + 
+  
+  # Add a clear plot title
+  # ggtitle("Effects of Regression Coefficient Size, Sample Size, and Number of Categories on Cluster Recovery")
 
 dev.off()
 
@@ -84,14 +119,41 @@ dev.off()
 for_plots <- Results_final %>% group_by(N_g, NonInvLoadSize, c, NonInvThreshSize) %>% summarise(across(ARI.con:RMSE_B4.cat, mean))
 for_plots_long <- pivot_longer(data = for_plots, cols = c(ARI.con, ARI.cat), names_to = "Measure",
                                values_to = "ClusRecovery") %>% dplyr::select(Measure, ClusRecovery, N_g, NonInvLoadSize, c, NonInvThreshSize)
-ggplot(for_plots_long, aes(x = N_g, y = ClusRecovery, colour = Measure, linetype = as.factor(c))) +
+
+ggplot(for_plots_long, aes(x = N_g, y = ClusRecovery, colour = Measure)) +
   geom_line(size = 1) +
-  facet_grid(NonInvThreshSize ~ NonInvLoadSize) + labs(x = "Within-group Sample Size", y = "Cluster Recovery") +
-  #scale_x_discrete(name = "Number of categories", position = "top") +
-  theme_bw() + theme(text=element_text(size=12), legend.position = "bottom", plot.title = element_text(hjust = 0.5)) +
-  #scale_color_hue(labels = c("Continuous", "Categorical")) + #scale_linetype_manual("Non-invariance threshold", values = c(0, 0.2, 0.4)) + #, labels = c("Equal", "Unequal")) +
-  #scale_y_discrete(name = "Regression Parameters", position = "right") +
-  ggtitle(label = "Cluster Recovery") + geom_point()
+  geom_point() +
+  
+  # Update facet grid with wrapped text
+  facet_grid(
+    NonInvThreshSize ~ NonInvLoadSize + c,
+    labeller = labeller(
+      NonInvThreshSize = function(x) paste("Non-Inv \n Threshold Size:\n", x),  # Add line break
+      NonInvLoadSize = function(x) paste("Non-Inv \n Loading Size:\n", x),      # Add line break
+      c = function(x) paste("Categories (c):\n", x)                   # Add line break
+    )
+  ) +
+  
+  # Axis and legend labels
+  labs(
+    x = "Within-group Sample Size", 
+    y = "Cluster Recovery", 
+    colour = "Measure"
+  ) +
+  
+  # General theme settings
+  theme_bw() +
+  theme(
+    text = element_text(size = 12),
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5),  # Centre title
+    strip.text = yelement_text(size = 10),   # Adjust facet label text size
+    legend.text = element_text(size = 10),  # Adjust legend size
+    legend.title = element_text(size = 12)
+  ) +
+  
+  # Add a clear plot title
+  ggtitle("Effects of Non-Invariance and Sample Size on Cluster Recovery")
 
 ####################################################################################################
 #################################### PLOTS - PARAMETER RECOVERY ####################################
@@ -117,14 +179,92 @@ for_plots_long <- pivot_longer(data = for_plots, cols = starts_with("RMSE."), # 
 # CairoPNG(filename = "C:/Users/perezalo/OneDrive - Tilburg University/First paper/ParSim2.png", width = 650, height = 650)
 # CairoPNG(filename = "C:/Users/User/OneDrive - Tilburg University/First paper/ParSim2.png", width = 650, height = 650)
 
-ggplot(for_plots_long, aes(x = N_g, y = Value, linetype = Type, color = Parameter)) + 
-  geom_line(size = 1) + 
-  facet_grid(coeff ~ c) + labs(x = "Within-group Sample Size", y = "Root Mean Squared Error (RMSE)") + 
-  # scale_x_continuous(sec.axis = sec_axis(~ . , name = "Model Specification", breaks = NULL, labels = NULL)) + 
-  theme_bw() + theme(text=element_text(size=12), legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + 
-  # scale_linetype_manual("Non-inv Type", values = c(1, 2), labels = c("Fixed", "Random")) +
-  scale_y_continuous(sec.axis = sec_axis(~ . , name = "Regression Parameters", breaks = NULL, labels = NULL)) +
-  ggtitle(label = "Parameter Recovery") + geom_point()
+ggplot(for_plots_long, aes(x = N_g, y = Value, colour = Type)) +
+  geom_line(size = 1) +
+  geom_point() +
+  
+  # Update facet grid with wrapped text
+  facet_grid(
+    c ~ coeff,
+    labeller = labeller(
+      coeff = function(x) paste("Beta:", x),      # Add line break
+      c = function(x) paste("Categories (c):", x) # Add line break
+    )
+  ) +
+  
+  # Axis and legend labels
+  labs(
+    x = "Within-group Sample Size", 
+    y = "Parameter Recovery", 
+    colour = "Measure"
+  ) +
+  
+  scale_colour_manual(
+    values = wes_palette(n = 2, name = "Darjeeling1"), # Keep your desired colours
+    labels = c(expression(RMSE~beta~DWLS), expression(RMSE~beta~ML))   # Change labels here
+  ) + 
+  
+  # General theme settings
+  theme_bw() +
+  theme(
+    text = element_text(size = 12),
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5),  # Centre title
+    strip.text = element_text(size = 10),   # Adjust facet label text size
+    legend.text = element_text(size = 10),  # Adjust legend size
+    legend.title = element_text(size = 12)
+  ) # +
+  
+  # Add a clear plot title
+  # ggtitle("Effects of Beta Coefficient Size, Sample Size, and Number of Categories on Parameter Recovery")
+
+dev.off()
+
+# Non-invariances plot
+# Parameter Recovery (Only one RMSE)
+Results_final$RMSE.con <- Results_final %>% select(RMSE_B1.con:RMSE_B4.con) %>% rowMeans()
+Results_final$RMSE.cat <- Results_final %>% select(RMSE_B1.cat:RMSE_B4.cat) %>% rowMeans()
+
+for_plots <- Results_final %>% group_by(N_g, NonInvLoadSize, c, NonInvThreshSize) %>% summarise(across(ARI.con:RMSE.cat, mean))
+for_plots_long <- pivot_longer(data = for_plots, cols = starts_with("RMSE."), # Specify the columns to pivot
+                               names_to = c("Parameter", "Type"), # Use .value to split into multiple columns
+                               names_pattern = "(RMSE)\\.(con|cat)",
+                               values_to = "Value") %>% dplyr::select(Parameter, Type, Value, N_g, NonInvLoadSize, c, NonInvThreshSize)
+
+ggplot(for_plots_long, aes(x = N_g, y = Value, colour = Type)) +
+  geom_line(size = 1) +
+  geom_point() +
+  
+  # Update facet grid with wrapped text
+  facet_grid(
+    NonInvThreshSize ~ NonInvLoadSize + c,
+    labeller = labeller(
+      NonInvThreshSize = function(x) paste("Non-Inv \n Threshold Size:\n", x),  # Add line break
+      NonInvLoadSize = function(x) paste("Non-Inv \n Loading Size:\n", x),      # Add line break
+      c = function(x) paste("Categories (c):\n", x)                   # Add line break
+    )
+  ) +
+  
+  # Axis and legend labels
+  labs(
+    x = "Within-group Sample Size", 
+    y = "Parameter Recovery", 
+    colour = "Type"
+  ) +
+  
+  # General theme settings
+  theme_bw() +
+  theme(
+    text = element_text(size = 12),
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5),  # Centre title
+    strip.text = element_text(size = 10),   # Adjust facet label text size
+    legend.text = element_text(size = 10),  # Adjust legend size
+    legend.title = element_text(size = 12)
+  ) +
+  
+  # Add a clear plot title
+  ggtitle("Effects of Non-Invariance and Sample Size on Parameter Recovery")
 
 dev.off()
 
@@ -132,41 +272,38 @@ dev.off()
 ############################ TABLES - CLUSTER AND PARAMETER RECOVERY ###############################
 ####################################################################################################
 
-# Check mean results per simulation factor
-a <- Results_final %>% group_by(nclus)      %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-b <- Results_final %>% group_by(ngroups)    %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-c <- Results_final %>% group_by(N_g)        %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-d <- Results_final %>% group_by(coeff)      %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-e <- Results_final %>% group_by(balance)    %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-f <- Results_final %>% group_by(c)          %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-g <- Results_final %>% group_by(NonInvSize) %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-h <- Results_final %>% group_by(NonInvType) %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-i <- Results_final %>% group_by(ResRange)   %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
-j <- Results_final %>% group_by(NonInvG)    %>% summarise(across(ARI.con:cov_mean.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+# Add total RMSE
+Results_final$RMSE.con <- Results_final %>% dplyr::select(RMSE_B1.con:RMSE_B4.con) %>% rowMeans()
+Results_final$RMSE.cat <- Results_final %>% dplyr::select(RMSE_B1.cat:RMSE_B4.cat) %>% rowMeans()
 
-list2 <- list(a, b, c, d, e, f, g, h, i, j)
+# Check mean results per simulation factor
+a <- Results_final %>% group_by(nclus)            %>% summarise(across(ARI.con:RMSE.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+b <- Results_final %>% group_by(N_g)              %>% summarise(across(ARI.con:RMSE.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+c <- Results_final %>% group_by(coeff)            %>% summarise(across(ARI.con:RMSE.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+d <- Results_final %>% group_by(balance)          %>% summarise(across(ARI.con:RMSE.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+e <- Results_final %>% group_by(c)                %>% summarise(across(ARI.con:RMSE.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+f <- Results_final %>% group_by(NonInvLoadSize)   %>% summarise(across(ARI.con:RMSE.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+g <- Results_final %>% group_by(NonInvThreshSize) %>% summarise(across(ARI.con:RMSE.cat, qwraps2::mean_sd, denote_sd = "paren", digits = 3))
+
+list2 <- list(a, b, c, d, e, f, g)
 current <- c()
 
 for(i in 1:length(list2)){
   tmp <- list2[[i]]
-  tmp$Factor <- colnames(tmp)[2]
-  colnames(tmp)[1:2] <- c("Non-inv Included", "Level")
+  tmp$Factor <- colnames(tmp)[1]
+  colnames(tmp)[1] <- c("Level")
   tmp$Level <- as.factor(tmp$Level)
   tmp <- tmp[, c(1, ncol(tmp), c(2:(ncol(tmp) - 1)))]
   current <- rbind(current, tmp)
 }
 
-rm(a, b, c, d, e, f, g, h, i, j)
-current <- current[, c("Factor", "Level", "Non-inv Included", "ARI", "CorrectClus", "fARI", 
-                       "RMSE_B1", "RMSE_B2", "RMSE_B3", "RMSE_B4", "RMSE")]
-# for_paper <- current %>% pivot_wider(names_from = `Non-inv Included`, values_from = c(ARI:RMSE_C)) %>% 
-#   dplyr::select(Factor, Level, ARI_yes, CorrectClus_yes, fARI_yes, RMSE_A_yes, RMSE_B_yes, RMSE_C_yes)
-for_paper <- current
-colnames(for_paper) <- c("Factor", "Level", "Non-inv Included", "ARI", "CorrectClus", "fARI", "RMSE_B1", "RMSE_B2", "RMSE_B3", "RMSE_B4", "RMSE")
+rm(a, b, c, d, e, f, g)
+current <- current[, c(2, 1, 3:20)]
+for_paper <- current %>% dplyr::select(-c(exo_mean.con, cov_mean.con, exo_mean.cat, cov_mean.cat))
+for_paper <- for_paper %>% dplyr::select(Factor:RMSE_B4.con, RMSE.con, ARI.cat:RMSE_B4.cat, RMSE.cat)
 
-# Make wider
-for_paper <- for_paper %>% filter(`Non-inv Included` %in% c("both", "bothK", "none", "noneK"))
-for_paper <- pivot_wider(data = for_paper, names_from = `Non-inv Included`, values_from = ARI:RMSE)
+# colnames(for_paper) <- c("Factor", "Level", "ARI.con", "PR.con", "RMSE_B1.con", "RMSE_B2.con", "RMSE_B3.con", "RMSE_B4.con", "RMSE.con",
+#                          "ARI.cat", "PR.cat", "RMSE_B1.cat", "RMSE_B2.cat", "RMSE_B3.cat", "RMSE_B4.cat")
 
 # Re-organize table
 # Get row indices of each factor
@@ -175,67 +312,24 @@ for(i in 1:length(factors)){
   assign(x = paste0("rn_", factors[i]), value = which(for_paper$Factor == factors[i]))
 }
 
-for_paper <- for_paper[c(rn_coeff, rn_N_g, rn_nclus, rn_balance, rn_NonInvG,
-                         rn_NonInvSize, rn_NonInvType, rn_ResRange), ]
+for_paper <- for_paper[c(rn_coeff, rn_N_g, rn_nclus, rn_balance, rn_NonInvLoadSize,
+                         rn_NonInvThreshSize, rn_c), ]
 
-rm(rn_coeff, rn_ngroups, rn_N_g, rn_nclus, rn_balance, rn_reliability, rn_NonInvG, rn_NonInvSize, rn_NonInvType, rn_ResRange)
+rm(rn_coeff, rn_N_g, rn_nclus, rn_balance, rn_NonInvLoadSize, rn_NonInvThreshSize, rn_c)
 
-# Add total - Cluster
-yes_tot <- Results_final %>% filter(NonInvIncl %in% c("both", "bothK", "none", "noneK")) %>% group_by(NonInvIncl) %>%  
-                             select(ARI, CorrectClus, fARI) %>% summarise(across(ARI:fARI, mean_sd, denote_sd = "paren")) %>% 
-                             pivot_wider(names_from = "NonInvIncl", values_from = c("ARI", "CorrectClus", "fARI")) %>% 
-                             select(ARI_both:fARI_noneK)
-
-yes_tot <- as.data.frame(yes_tot)
-yes_tot$Factor <- "Total"; yes_tot$Level <- ""
-yes_tot <- yes_tot %>% select(Factor, Level, ARI_both:fARI_noneK) %>% select(!contains("Correct"))
+# Add totals
+Totals <- Results_final %>% dplyr::select(ARI.con:RMSE.cat) %>% apply(., 2, mean_sd, denote_sd = "paren", digits = 3) %>% as.data.frame() %>% t() %>% as.data.frame()
+Totals$Factor <- "Total"; Totals$Level <- ""
+Totals <- Totals %>% select(Factor, Level, ARI.con:RMSE_B4.con, RMSE.con, ARI.cat:RMSE_B4.cat, RMSE.cat)
+for_paper <- rbind(for_paper, Totals)
 
 #Final - Cluster
-for_paper_clus <- for_paper[, c("Factor", "Level", 
-                                "ARI_both", "fARI_both",
-                                "ARI_noneK", "fARI_noneK",
-                                "ARI_bothK", "fARI_bothK",
-                                "ARI_none", "fARI_none")]
-for_paper_clus <- rbind(for_paper_clus, yes_tot)
-
-# Final organization
-for_paper_clus <- for_paper_clus[, c("Factor", "Level", 
-                                "ARI_both", "fARI_both",
-                                "ARI_none", "fARI_none",
-                                "ARI_bothK", "fARI_bothK",
-                                "ARI_noneK", "fARI_noneK")]
-
+for_paper_clus <- for_paper %>% dplyr::select(Factor:CC.con, ARI.cat:CC.cat)
 print(xtable(for_paper_clus, digits = 3), include.rownames = F)
 
-rm(yes_tot, tmp)
-
-# Add total - Parameter
-yes_tot <- Results_final %>% filter(NonInvIncl %in% c("both", "bothK", "none", "noneK")) %>% group_by(NonInvIncl) %>%  
-                             select(RMSE) %>% summarise(across(RMSE, mean_sd, denote_sd = "paren", digits = 3)) %>% 
-                             pivot_wider(names_from = "NonInvIncl", values_from = c("RMSE"))
-yes_tot <- as.data.frame(yes_tot)
-yes_tot$Factor <- "Total"; yes_tot$Level <- ""
-yes_tot <- yes_tot %>% select(Factor, Level, both:noneK)
-colnames(yes_tot) <- c("Factor", "Level", "RMSE_both", "RMSE_bothK", "RMSE_none", "RMSE_noneK")
-
-#Final - Parameter
-for_paper_par <- for_paper[, c("Factor", "Level", 
-                               "RMSE_both", "RMSE_bothK", "RMSE_none", "RMSE_noneK"
-                               )]
-for_paper_par <- rbind(for_paper_par, yes_tot)
-
-# Final organization
-for_paper_par <- for_paper_par[, c("Factor", "Level", 
-                                   "RMSE_both", "RMSE_none", "RMSE_bothK", "RMSE_noneK")]
-
-# for_paper_par <- data.frame(lapply(for_paper_par, gsub, pattern = " ", replacement = "")) # Remove unnecessary spaces
+# Final - Parameter
+for_paper_par <- for_paper %>% dplyr::select(Factor:Level, RMSE.con, RMSE.cat)
 print(xtable(for_paper_par, digits = 3), include.rownames = F)
-
-# Extra - Average parameter recovery per regression parameter across all models
-Results_final %>% ungroup() %>% select(RMSE_B1:RMSE_B4) %>% colMeans()
-
-
-rm(yes_tot) 
 
 Results_final %>% filter(NonInvG == 0.5) %>% group_by(NonInvIncl) %>%  
   select(RMSE_B1:RMSE_B4) %>% summarise(across(RMSE_B1:RMSE_B4, mean_sd, denote_sd = "paren", digits = 3))
